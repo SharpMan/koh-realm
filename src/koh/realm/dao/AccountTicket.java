@@ -57,11 +57,7 @@ public class AccountTicket {
     }
 
     public Account valid() {
-        try {
-            return account;
-        } finally {
-            //clear();
-        }
+        return account;
     }
 
     public boolean isValid() {
@@ -70,15 +66,8 @@ public class AccountTicket {
     }
 
     public boolean isCorrect(String GT_ip, String[] infos) {
-        if (!isValid()) {
-            return false;
-        }
-        if (infos.length != 2) {
-            return false;
-        }
-        if (key.equals(infos[0]) && ip.equals(infos[1]) && ip.equals(GT_ip)) {
-            return true;
-        }
-        return false;
+        return isValid() && infos.length == 2
+                && key.equals(infos[0]) && ip.equals(infos[1])
+                && ip.equals(GT_ip);
     }
 }

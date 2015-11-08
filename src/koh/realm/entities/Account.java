@@ -13,12 +13,8 @@ import koh.realm.network.RealmClient;
 public class Account {
 
     public static boolean COMPTE_LOGIN(Account to_compare, String name, String pass) {
-        if (to_compare != null && to_compare.isValidPass(pass)) {
-            return true;
-        } else {
-            return false;
-        }
-
+        return to_compare != null
+                && to_compare.isValidPass(pass);
     }
 
     public Map<Short, Byte> Characters = new HashMap<>();
@@ -81,9 +77,9 @@ public class Account {
      * @return the string the given byte[] represents
      */
     private static String convertToHex(byte[] raw) {
-        StringBuffer sb = new StringBuffer();
-        for (int i = 0; i < raw.length; i++) {
-            sb.append(Integer.toString((raw[i] & 0xff) + 0x100, 16).substring(1));
+        StringBuilder sb = new StringBuilder();
+        for (byte aRaw : raw) {
+            sb.append(Integer.toString((aRaw & 0xff) + 0x100, 16).substring(1));
         }
         return sb.toString();
     }
@@ -106,9 +102,7 @@ public class Account {
             Client = null;
             this.finalize();
         }
-        catch(Throwable tr){
-            tr.printStackTrace();
-        }
+        catch(Throwable ignored){ }
     }
 
 }

@@ -1,18 +1,14 @@
 package koh.realm.entities;
 
-import java.util.ArrayList;
 import koh.inter.InterMessage;
 import koh.inter.MessageEnum;
 import koh.inter.messages.PlayerCreatedMessage;
-import koh.protocol.client.Message;
 import koh.protocol.client.enums.ServerStatusEnum;
 import koh.protocol.client.types.GameServerInformations;
 import koh.protocol.messages.connection.ServerStatusUpdateMessage;
-import koh.protocol.messages.connection.ServersListMessage;
 import koh.realm.Main;
-import koh.realm.dao.AccountDAO;
-import koh.realm.dao.CharacterDAO;
-import koh.realm.dao.GameServerDAO;
+import koh.realm.dao.api.CharacterDAO;
+import koh.realm.dao.impl.CharacterDAOImpl;
 import org.apache.mina.core.session.IoSession;
 
 /**
@@ -34,8 +30,14 @@ public class GameServer {
             return;
         }
         switch (MessageEnum.valueOf(message.getMessageId())) {
+            case HelloMessage:
+                break;
+            case PlayerCommingMessage:
+                break;
+            case ExpulseAccount:
+                break;
             case PlayerCreated:
-                CharacterDAO.Insert(((PlayerCreatedMessage) message).Owner, ID, (short)((PlayerCreatedMessage) message).Count);
+                CharacterDAO.get().insertOrUpdate(((PlayerCreatedMessage) message).Owner, ID, (short)((PlayerCreatedMessage) message).Count);
                 return;
         }
 
@@ -47,7 +49,7 @@ public class GameServer {
     }
 
     /**
-     *
+     * 
      * @param packet
      */
     public void sendPacket(InterMessage packet) {

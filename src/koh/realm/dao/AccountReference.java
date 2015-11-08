@@ -1,5 +1,6 @@
 package koh.realm.dao;
 
+import koh.realm.dao.api.AccountDAO;
 import koh.realm.entities.Account;
 
 /**
@@ -34,7 +35,7 @@ public class AccountReference {
             }
             lastLogin = System.currentTimeMillis();
         } else if (account != null) {
-            AccountDAO.removeAccount(account);
+            AccountDAO.get().removeAccount(account);
         }
         if (logged == null) {
             account.totalClear();

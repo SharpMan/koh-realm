@@ -23,9 +23,11 @@ import koh.protocol.messages.connection.SelectedServerRefusedMessage;
 import koh.protocol.messages.connection.ServerSelectionMessage;
 import koh.protocol.messages.connection.ServersListMessage;
 import koh.realm.Main;
-import koh.realm.dao.AccountDAO;
+import koh.realm.dao.api.AccountDAO;
+import koh.realm.dao.api.GameServerDAO;
+import koh.realm.dao.impl.AccountDAOImpl;
 import koh.realm.dao.AccountReference;
-import koh.realm.dao.GameServerDAO;
+import koh.realm.dao.impl.GameServerDAOImpl;
 import koh.realm.entities.Account;
 import koh.realm.entities.GameServer;
 import koh.realm.utils.Util;
@@ -64,23 +66,23 @@ public final class RealmClient {
         return ((InetSocketAddress) this.session.getRemoteAddress()).getAddress().toString();
     }
 
-    public void parsePacket(Message message) {
+    public void parsePacket(Message message) throws Exception {
         if (message == null) {
             return;
         }
         switch (ClientState) {
             case CHECK_ACCOUNT:
                 toThreat = (IdentificationMessage) message;
-                AccountDAO.Loader.addClient(this);
-                if (toThreat != null && AccountDAO.Loader.getPosition(this) != 1) {
-                    this.sendPacket(new LoginQueueStatusMessage((short) AccountDAO.Loader.getPosition(this), (short) AccountDAO.Loader.getTotal()));
+                AccountDAO.get().getLoader().addClient(this);
+                if (toThreat != null && AccountDAO.get().getLoader().getPosition(this) != 1) {
+                    this.sendPacket(new LoginQueueStatusMessage((short) AccountDAO.get().getLoader().getPosition(this), (short) AccountDAO.get().getLoader().getTotal()));
                     this.showQueue = true;
                 }
                 break;
             case ON_GAMESERVER_LIST:
                 switch (message.getMessageId()) {
                     case ServerSelectionMessage.MESSAGE_ID:
-                        GameServer Server = GameServerDAO.getGameServer(((ServerSelectionMessage) message).getServerId());
+                        GameServer Server = GameServerDAO.get().getByKey(((ServerSelectionMessage) message).getServerId());
                         if (Server == null) {
                             this.sendPacket(new SelectedServerRefusedMessage(((ServerSelectionMessage) message).getServerId(), ServerConnectionError.DUE_TO_STATUS, ServerStatusEnum.STATUS_UNKNOWN));
                             break;
@@ -95,7 +97,7 @@ public final class RealmClient {
                         Server.sendPacket(new PlayerCommingMessage(Ticket, getIP(), this.Compte.get().ID, this.Compte.get().NickName, this.Compte.get().SecretQuestion, this.Compte.get().SecretAnswer, this.Compte.get().LastIP, this.Compte.get().Right, this.Compte.get().last_login));
                         this.Compte.get().LastIP = this.getIP();
                         this.Compte.get().last_login = Timestamp.from(Instant.now());
-                        AccountDAO.Save(this.Compte.get());
+                        AccountDAO.get().save(this.Compte.get());
                         //TODO : Bool createNewCharacter Size
                         this.sendPacket(new SelectedServerDataMessage(Server.ID, Server.Adress, Server.Port, true, Ticket));
                         this.timeOut();
@@ -133,10 +135,9 @@ public final class RealmClient {
             IoBuffer a = IoBuffer.wrap(this.toThreat.getCredentials());
             String AccountName = BufUtils.readUTF(a);
             String Pass = BufUtils.readUTF(a);
-
             a.clear();
 
-            AccountReference ref = AccountDAO.getCompteByName(AccountName);
+            AccountReference ref = AccountDAO.get().getCompteByName(AccountName);
 
             if (ref != null && ref.isLogged()) {
                 Account to_compare = ref.get();
@@ -157,7 +158,7 @@ public final class RealmClient {
             {
                 Account to_compare;
                 try {
-                    to_compare = AccountDAO.Find(AccountName, this);
+                    to_compare = AccountDAO.get().getByKey(AccountName);
                 } catch (NullPointerException e) {
                     this.sendPacket(new IdentificationFailedMessage(IdentificationFailureReason.TOO_MANY_ON_IP));
                     return;
@@ -168,7 +169,7 @@ public final class RealmClient {
 
                 if (Account.COMPTE_LOGIN(to_compare, AccountName, Pass)) {
 
-                    Compte = AccountDAO.initReference(to_compare);
+                    Compte = AccountDAO.get().initReference(to_compare);
 
                     if (Compte.isLogged()) {
                         this.sendPacket(new IdentificationFailedMessage(IdentificationFailureReason.TOO_MANY_ON_IP)); //Already Connected
@@ -184,12 +185,13 @@ public final class RealmClient {
                         this.sendPacket(new IdentificationFailedMessage(IdentificationFailureReason.BANNED));
                         return;
                     }
-                    GameServerDAO.getGameServers().stream().forEach((g) -> {
+                    GameServerDAO.get().getGameServers().stream().forEach((g) -> {
                         g.sendPacket(new ExpulseAccountMessage(to_compare.ID));
                     });
                     try {
-                        AccountDAO.addAccount(to_compare);
+                        AccountDAO.get().addAccount(to_compare);
                     } catch (NullPointerException e) {
+                        //TODO(Alleos) : Disconnect client after sending the packet
                         this.sendPacket(new IdentificationFailedMessage(IdentificationFailureReason.BANNED));
                         return;
                     }
@@ -203,7 +205,7 @@ public final class RealmClient {
                     this.sendPacket(new IdentificationSuccessMessage(Compte.get().Username, Compte.get().NickName, Compte.get().ID,/*CommunatyID*/ 0, Compte.get().Right > 0, Compte.get().SecretQuestion, Instant.now().getEpochSecond() * 1000, false));
                     this.sendPacket(new ServersListMessage(new ArrayList<GameServerInformations>() {
                         {
-                            GameServerDAO.getGameServers().stream().forEach((G) -> {
+                            GameServerDAO.get().getGameServers().stream().forEach((G) -> {
                                 add(new GameServerInformations(G.ID, G.State, (byte) (G.State == ServerStatusEnum.FULL ? 1 : 0), true, Compte.get().getPlayers(G.ID), 0));
                             });
                         }
@@ -214,7 +216,7 @@ public final class RealmClient {
                     this.sendPacket(new IdentificationFailedMessage(IdentificationFailureReason.WRONG_CREDENTIALS));
                 }
             }
-        } catch (NullPointerException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -229,7 +231,7 @@ public final class RealmClient {
         }
         if (toThreat != null) {
             toThreat = null;
-            AccountDAO.Loader.onClientDisconnect(this);
+            AccountDAO.get().getLoader().onClientDisconnect(this);
         }
         if (Compte != null) {
             Compte.setLogged(null);

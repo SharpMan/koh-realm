@@ -2,9 +2,9 @@ package koh.realm.inter;
 
 import koh.inter.InterMessage;
 import koh.inter.messages.HelloMessage;
-import koh.protocol.client.Message;
 import koh.realm.Main;
-import koh.realm.dao.GameServerDAO;
+import koh.realm.dao.api.GameServerDAO;
+import koh.realm.dao.impl.GameServerDAOImpl;
 import koh.realm.entities.GameServer;
 import org.apache.mina.core.service.IoHandlerAdapter;
 import org.apache.mina.core.session.IdleStatus;
@@ -34,10 +34,10 @@ public class InterHandler extends IoHandlerAdapter {
         if (objClient != null && objClient instanceof GameServer) {
             GameServer client = (GameServer) objClient;
             client.parsePacket(message);
-            Main.Logs().writeInfo(new StringBuilder("[INFOS] " + client.Name + " recv >> ").append(message.getClass().getSimpleName()).toString());
+            Main.Logs().writeInfo("[INFOS] " + client.Name + " recv >> " + message.getClass().getSimpleName());
         } else {
             if (arg1 instanceof HelloMessage) {
-                GameServer GameServer = GameServerDAO.getGameServers().stream().filter(x -> x.Hash.equalsIgnoreCase(((HelloMessage) arg1).Key)).findFirst().get();
+                GameServer GameServer = GameServerDAO.get().getGameServers().stream().filter(x -> x.Hash.equalsIgnoreCase(((HelloMessage) arg1).Key)).findFirst().get();
                 if (GameServer != null) {
                     session.setAttribute("session", GameServer);
                     GameServer.onConnected(session);

@@ -48,14 +48,13 @@ public class Main {
             long time = System.currentTimeMillis();
             Settings.Initialize();
             $Logs = new Logs();
-            MySQL.ConnectDatabase();
-            MySQL.LoadCache();
+            DatabaseSource.get().initialize();
             RealmHandler.RawBytes = Files.readAllBytes(Paths.get(Main.bypassPacket));
             RealmHandler.binaryKeys = new String(Files.readAllBytes(Paths.get(Main.binaryKey)), "utf-8").toCharArray();
             $InterServer = new InterServer(Settings.GetIntElement("Inter.Port")).configure().launch();
             $RealmServer = new RealmServer(Settings.GetIntElement("Login.Port")).configure().launch();
             running = true;
-            $Logs.writeInfo(new StringBuilder("RealmServer start in ").append(System.currentTimeMillis() - time).append(" ms.").toString());
+            $Logs.writeInfo("RealmServer start in " + (System.currentTimeMillis() - time) + " ms.");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -69,7 +68,7 @@ public class Main {
         try {
             $InterServer.stop();
             $RealmServer.stop();
-            MySQL.disconnectDatabase();
+            DatabaseSource.get().stop();
             running = false;
         } catch (Exception e) {
             e.printStackTrace();
