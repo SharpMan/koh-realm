@@ -47,8 +47,9 @@ public class GameServerDAOImpl extends GameServerDAO {
                     }
                 });
 
-            return cursor.getRow();
+            return gameServers.size();
         } catch (Exception e) {
+            System.err.println(e.getMessage());
             e.printStackTrace();
         }
         return 0;
