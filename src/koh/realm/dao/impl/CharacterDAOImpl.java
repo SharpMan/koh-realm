@@ -1,10 +1,11 @@
 package koh.realm.dao.impl;
 
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import com.google.inject.Inject;
 import koh.realm.DatabaseSource;
 import koh.realm.dao.api.CharacterDAO;
 import koh.realm.utils.sql.ConnectionStatement;
+
+import java.sql.PreparedStatement;
 
 /**
  *
@@ -12,10 +13,17 @@ import koh.realm.utils.sql.ConnectionStatement;
  */
 public class CharacterDAOImpl extends CharacterDAO {
 
+    private final DatabaseSource dbSource;
+
+    @Inject
+    public CharacterDAOImpl(DatabaseSource dbSource) {
+        this.dbSource = dbSource;
+    }
+
     private static final String REPLACE_BY_OWNER = "REPLACE INTO `worlds_characters` VALUES (?,?,?);";
 
     public boolean insertOrUpdate(int Owner, short server, short number) {
-        try (ConnectionStatement<PreparedStatement> conn = DatabaseSource.get().prepareStatement(REPLACE_BY_OWNER)){
+        try (ConnectionStatement<PreparedStatement> conn = dbSource.prepareStatement(REPLACE_BY_OWNER)){
             PreparedStatement stmt = conn.getStatement();
             stmt.setInt(1, Owner);
             stmt.setShort(2, server);

@@ -8,14 +8,6 @@ import java.util.Collection;
 
 public abstract class GameServerDAO implements DAO<Short, GameServer> {
 
-    private static GameServerDAO instance;
-
-    public static GameServerDAO get() {
-        if(instance == null)
-            instance = new GameServerDAOImpl();
-        return instance;
-    }
-
     public abstract GameServer getByHash(String hash);
 
     public abstract int loadAll();

@@ -1,20 +1,16 @@
 package koh.realm.dao.impl;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
+import com.google.inject.Inject;
 import koh.realm.DatabaseSource;
+import koh.realm.Logs;
 import koh.realm.dao.api.GameServerDAO;
 import koh.realm.entities.GameServer;
-import koh.realm.utils.Settings;
 import koh.realm.utils.sql.ConnectionResult;
-import koh.realm.utils.sql.ConnectionStatement;
+
+import java.sql.ResultSet;
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  *
@@ -24,11 +20,20 @@ public class GameServerDAOImpl extends GameServerDAO {
 
     private final Map<Short, GameServer> gameServers = new ConcurrentHashMap<>();
 
+    private final DatabaseSource dbSource;
+
+    @Inject
+    public GameServerDAOImpl(DatabaseSource dbSource, Logs logs) {
+        this.dbSource = dbSource;
+
+        logs.writeInfo(this.loadAll() + " WorldServers loaded ");
+    }
+
     private static final String FIND_ALL = "SELECT * from realmlist;";
 
     @Override
     public int loadAll() {
-        try (ConnectionResult conn = DatabaseSource.get().executeQuery(FIND_ALL, 0)) {
+        try (ConnectionResult conn = dbSource.executeQuery(FIND_ALL, 0)) {
             ResultSet cursor = conn.getResult();
             while (cursor.next())
                 addGameServer(new GameServer() {

@@ -35,7 +35,7 @@ public class AccountReference {
             }
             lastLogin = System.currentTimeMillis();
         } else if (account != null) {
-            AccountDAO.get().removeAccount(account);
+            //AccountDAO.get().removeAccount(account);
         }
         if (logged == null) {
             account.totalClear();

@@ -1,5 +1,6 @@
 package koh.realm.dao.api;
 
+import com.google.inject.Singleton;
 import koh.realm.dao.DAO;
 import koh.realm.dao.impl.AccountDAOImpl;
 import koh.realm.dao.AccountReference;
@@ -9,14 +10,6 @@ import koh.realm.network.RealmLoader;
 import java.util.Collection;
 
 public abstract class AccountDAO implements DAO<String, Account> {
-
-    private static AccountDAO instance;
-
-    public static AccountDAO get() {
-        if(instance == null)
-            instance = new AccountDAOImpl();
-        return instance;
-    }
 
     public abstract RealmLoader getLoader();
 

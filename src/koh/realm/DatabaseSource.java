@@ -1,19 +1,17 @@
 package koh.realm;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import koh.realm.utils.Settings;
+import koh.realm.utils.sql.ConnectionResult;
+import koh.realm.utils.sql.ConnectionStatement;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Timer;
-import java.util.concurrent.locks.ReentrantLock;
-
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-import koh.realm.dao.api.GameServerDAO;
-import koh.realm.dao.impl.GameServerDAOImpl;
-import koh.realm.utils.Settings;
-import koh.realm.utils.sql.ConnectionResult;
-import koh.realm.utils.sql.ConnectionStatement;
 
 /**
  *
@@ -21,32 +19,23 @@ import koh.realm.utils.sql.ConnectionStatement;
  */
 public class DatabaseSource {
 
-    private static DatabaseSource instance;
-
-    public static DatabaseSource getInstance() {
-        if(instance == null)
-            instance = new DatabaseSource();
-        return instance;
-    }
-
-    public static DatabaseSource get() {
-        return getInstance();
-    }
-
     private final HikariDataSource dataSource;
 
-    private DatabaseSource() {
+    @Inject
+    public DatabaseSource(Settings settings) {
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:mysql://" + Settings.GetStringElement("Database.Host") + "/" + Settings.GetStringElement("Database.Name"));
+        config.setJdbcUrl("jdbc:mysql://" + settings.getStringElement("Database.Host") + "/" + settings.getStringElement("Database.Name"));
 
-        config.setDataSourceClassName("com.mysql.jdbc.jdbc2.optional.MysqlDataSource");
-        config.setUsername(Settings.GetStringElement("Database.User"));
-        config.setPassword(Settings.GetStringElement("Database.Password"));
+        //config.setDataSourceClassName("com.mysql.jdbc.jdbc2.optional.MysqlDataSource");
+        config.setUsername(settings.getStringElement("Database.User"));
+        config.setPassword(settings.getStringElement("Database.Password"));
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
 
         this.dataSource = new HikariDataSource(config);
+
+        Main.onShutdown(this::stop);
     }
 
     public Connection getConnectionOfPool() throws SQLException {
@@ -83,10 +72,6 @@ public class DatabaseSource {
         if(secsTimeout > 0)
             statement.setQueryTimeout(300);
         return new ConnectionResult(connection, statement, statement.executeQuery(query));
-    }
-
-    public void initialize() throws Exception {
-        Main.Logs().writeInfo(GameServerDAO.get().loadAll() + " WorldServers loaded ");
     }
 
     public void stop() {

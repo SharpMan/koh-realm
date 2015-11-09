@@ -3,8 +3,12 @@ package koh.realm.network;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import koh.protocol.client.Message;
 import koh.protocol.client.codec.ProtocolEncoder;
+import koh.realm.Logs;
 import koh.realm.Main;
 import koh.realm.network.RealmClient.State;
 import koh.realm.network.codec.ProtocolDecoder;
@@ -17,22 +21,32 @@ import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
  *
  * @author Neo-Craft
  */
+
 public class RealmServer {
 
     private final NioSocketAcceptor acceptor;
-    private final InetSocketAddress adress;
+    private final InetSocketAddress address;
+    private final RealmHandler handler;
+    private final ProtocolDecoder decoder;
+    private final ProtocolEncoder encoder;
 
-    public RealmServer(int port) {
+    @Inject
+    public RealmServer(Settings settings, RealmHandler handler,
+                       ProtocolDecoder decoder, ProtocolEncoder encoder) {
+        this.handler = handler;
         this.acceptor = new NioSocketAcceptor(Runtime.getRuntime().availableProcessors() * 4);
-        this.adress = new InetSocketAddress(Settings.GetStringElement("Login.Host"), port);
+        this.address = new InetSocketAddress(settings.getStringElement("Login.Host"),
+                settings.getIntElement("Login.Port"));
+        this.decoder = decoder;
+        this.encoder = encoder;
     }
 
     public RealmServer configure() {
         acceptor.setReuseAddress(true);
         acceptor.setBacklog(100000);
 
-        this.acceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new ProtocolEncoder(), new ProtocolDecoder()));
-        this.acceptor.setHandler(new RealmHandler());
+        this.acceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(encoder, decoder));
+        this.acceptor.setHandler(handler);
 
         //this.acceptor.getSessionConfig().setMaxReadBufferSize(2048); 
         this.acceptor.getSessionConfig().setReadBufferSize(1024); // Debug
@@ -45,8 +59,17 @@ public class RealmServer {
 
     public RealmServer launch() {
         try {
+            this.acceptor.bind(address);
             //Connect the acceptor with the HostAdress
-            this.acceptor.bind(adress);
+
+            Main.onShutdown(() -> {
+                try {
+                    stop();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            });
+
         } catch (IOException ex) {
             ex.printStackTrace();
         }

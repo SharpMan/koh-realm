@@ -37,7 +37,7 @@ public class GameServer {
             case ExpulseAccount:
                 break;
             case PlayerCreated:
-                CharacterDAO.get().insertOrUpdate(((PlayerCreatedMessage) message).Owner, ID, (short)((PlayerCreatedMessage) message).Count);
+                //CharacterDAO.get().insertOrUpdate(((PlayerCreatedMessage) message).Owner, ID, (short)((PlayerCreatedMessage) message).Count);
                 return;
         }
 
@@ -45,7 +45,7 @@ public class GameServer {
 
     public void setState(ServerStatusEnum State) {
         this.State = State;
-        Main.RealmServer().SendPacket(new ServerStatusUpdateMessage(new GameServerInformations(ID, State, (byte) (State == ServerStatusEnum.FULL ? 1 : 0), true, (byte) 1, 0)));
+        //Main.RealmServer().SendPacket(new ServerStatusUpdateMessage(new GameServerInformations(ID, State, (byte) (State == ServerStatusEnum.FULL ? 1 : 0), true, (byte) 1, 0)));
     }
 
     /**

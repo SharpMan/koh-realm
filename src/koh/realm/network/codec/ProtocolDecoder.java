@@ -1,9 +1,11 @@
 package koh.realm.network.codec;
 
+import com.google.inject.Inject;
 import koh.protocol.MessageEnum;
 import koh.protocol.client.Message;
 import koh.protocol.messages.connection.*;
 import koh.protocol.messages.handshake.ProtocolRequired;
+import koh.realm.Logs;
 import koh.realm.Main;
 import org.apache.mina.core.buffer.IoBuffer;
 import org.apache.mina.core.session.IoSession;
@@ -15,6 +17,13 @@ import org.apache.mina.filter.codec.ProtocolDecoderOutput;
  * @author Neo-Craft
  */
 public class ProtocolDecoder extends CumulativeProtocolDecoder {
+
+    private final Logs logs;
+
+    @Inject
+    public ProtocolDecoder(Logs logs) {
+        this.logs = logs;
+    }
 
     private static final int BIT_MASK = 3;
     private static final int BIT_RIGHT_SHIFT_LEN_PACKET_ID = 2;
@@ -66,9 +75,10 @@ public class ProtocolDecoder extends CumulativeProtocolDecoder {
                 message = new IdentificationMessage();
                 break;
             default:
-                Main.Logs().writeError("[ERROR] Unknown Message Header " + MessageEnum.valueOf(getMessageId(header)) + session.getRemoteAddress().toString());
+                logs.writeError("[ERROR] Unknown Message Header " + MessageEnum.valueOf(getMessageId(header)) + session.getRemoteAddress().toString());
                 session.write(new BasicNoOperationMessage());
-                return false;
+                buf.skip(messageLength);
+                return true;
         }
         message.deserialize(buf);
         out.write(message);

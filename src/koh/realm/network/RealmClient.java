@@ -58,7 +58,7 @@ public final class RealmClient {
         try {
             this.ciphers = new RSACiphers(2048);
         } catch (Exception e) {
-            Main.Logs().writeError("Can't instantiate RSA ciphers because : {}" + e.getMessage());
+           // Main.Logs().writeError("Can't instantiate RSA ciphers because : {}" + e.getMessage());
         }
     }
 
@@ -66,7 +66,7 @@ public final class RealmClient {
         return ((InetSocketAddress) this.session.getRemoteAddress()).getAddress().toString();
     }
 
-    public void parsePacket(Message message) throws Exception {
+    /*public void parsePacket(Message message) throws Exception {
         if (message == null) {
             return;
         }
@@ -106,7 +106,7 @@ public final class RealmClient {
                 }
                 break;
         }
-    }
+    }*/
 
     /**
      *
@@ -124,7 +124,7 @@ public final class RealmClient {
     }
 
     public void threatWaiting() {
-        if (toThreat == null) {
+       /* if (toThreat == null) {
             return;
         }
         try {
@@ -181,7 +181,7 @@ public final class RealmClient {
                          PacketsManager.SEND_BANNED_FORDAYS(_out, to_compare.getDaysBanned() + "");
                          BlockNextPackets = true;
                          return;
-                         }*/
+                         }
                         this.sendPacket(new IdentificationFailedMessage(IdentificationFailureReason.BANNED));
                         return;
                     }
@@ -202,7 +202,7 @@ public final class RealmClient {
                     setTimeout(90000);
                     this.toThreat = null;
                     this.ClientState = State.ON_GAMESERVER_LIST;
-                    this.sendPacket(new IdentificationSuccessMessage(Compte.get().Username, Compte.get().NickName, Compte.get().ID,/*CommunatyID*/ 0, Compte.get().Right > 0, Compte.get().SecretQuestion, Instant.now().getEpochSecond() * 1000, false));
+                    this.sendPacket(new IdentificationSuccessMessage(Compte.get().Username, Compte.get().NickName, Compte.get().ID,/*CommunatyID 0, Compte.get().Right > 0, Compte.get().SecretQuestion, Instant.now().getEpochSecond() * 1000, false));
                     this.sendPacket(new ServersListMessage(new ArrayList<GameServerInformations>() {
                         {
                             GameServerDAO.get().getGameServers().stream().forEach((G) -> {
@@ -218,7 +218,7 @@ public final class RealmClient {
             }
         } catch (Exception e) {
             e.printStackTrace();
-        }
+        }*/
     }
 
     public void setTimeout(int ms) {
@@ -231,7 +231,7 @@ public final class RealmClient {
         }
         if (toThreat != null) {
             toThreat = null;
-            AccountDAO.get().getLoader().onClientDisconnect(this);
+            //AccountDAO.get().getLoader().onClientDisconnect(this);
         }
         if (Compte != null) {
             Compte.setLogged(null);

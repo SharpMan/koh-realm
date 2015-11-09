@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
+import com.google.inject.Inject;
 import koh.realm.DatabaseSource;
 import koh.realm.Main;
 import koh.realm.dao.AccountReference;
@@ -25,12 +26,12 @@ import koh.realm.utils.sql.ConnectionStatement;
  */
 public class AccountDAOImpl extends AccountDAO {
 
-    private final Map<Integer, AccountReference> hashByGuid = new ConcurrentHashMap<>();
-    private final Map<String, AccountReference> hashByName = new ConcurrentHashMap<>();
-    private final List<Account> loggedAccounts = new CopyOnWriteArrayList<>();
-    private final RealmLoader loader = new RealmLoader();
+    private final DatabaseSource dbSource;
 
-    public AccountDAOImpl() {
+    @Inject
+    public AccountDAOImpl(DatabaseSource dbSource) {
+        this.dbSource = dbSource;
+
         ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
         service.scheduleAtFixedRate((Runnable) () -> {
             ArrayList<AccountReference> copy = new ArrayList<>();
@@ -44,6 +45,11 @@ public class AccountDAOImpl extends AccountDAO {
             copy.clear();
         }, 60 * 1000 * 60, 60 * 1000 * 60, TimeUnit.MILLISECONDS);
     }
+
+    private final Map<Integer, AccountReference> hashByGuid = new ConcurrentHashMap<>();
+    private final Map<String, AccountReference> hashByName = new ConcurrentHashMap<>();
+    private final List<Account> loggedAccounts = new CopyOnWriteArrayList<>();
+    private final RealmLoader loader = new RealmLoader();
 
     @Override
     public RealmLoader getLoader() {
@@ -91,7 +97,7 @@ public class AccountDAOImpl extends AccountDAO {
 
     @Override
     public void save(Account acc) {
-        try (ConnectionStatement<PreparedStatement> conn = DatabaseSource.get().prepareStatement(UPDATE_BY_ID)){
+        try (ConnectionStatement<PreparedStatement> conn = dbSource.prepareStatement(UPDATE_BY_ID)){
             PreparedStatement stmt = conn.getStatement();
             stmt.setTimestamp(1, acc.last_login);
             stmt.setString(2, acc.LastIP);
@@ -112,7 +118,7 @@ public class AccountDAOImpl extends AccountDAO {
 
     @Override
     public Account getByKey(String Username) throws Exception {
-        try (ConnectionStatement<PreparedStatement> conn = DatabaseSource.get().prepareStatement(QUERY_BY_USERNAME)) {
+        try (ConnectionStatement<PreparedStatement> conn = dbSource.prepareStatement(QUERY_BY_USERNAME)) {
 
             PreparedStatement stmt = conn.getStatement();
             stmt.setString(1, Username);
@@ -152,7 +158,7 @@ public class AccountDAOImpl extends AccountDAO {
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            Main.Logs().writeInfo("Connexion a la DB Perdue, deconnexion du compte en connexion en attendant la reconnexion de la DB...");
+            //Main.Logs().writeInfo("Connexion a la DB Perdue, deconnexion du compte en connexion en attendant la reconnexion de la DB...");
             throw new Exception();
         }
     }

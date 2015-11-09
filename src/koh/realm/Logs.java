@@ -1,5 +1,9 @@
 package koh.realm;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import koh.realm.utils.Settings;
+
 import java.io.*;
 import java.util.Calendar;
 
@@ -7,16 +11,21 @@ import java.util.Calendar;
  *
  * @author Alleos13
  */
+
 public class Logs {
 
     private PrintStream Log_Errors;
     private BufferedWriter Log_Infos;
     private String createdDate;
-    public static boolean DEBUG = true;
 
-    public Logs() {
+    private boolean DEBUG = true;
+
+    @Inject
+    public Logs(Settings settings) {
         this.createdDate = getDay();
         initialize();
+
+        Main.onShutdown(this::close);
     }
 
     private synchronized static void checkFolders(String createdDate) {
