@@ -1,18 +1,12 @@
 package koh.realm;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import koh.realm.inter.InterServer;
+import koh.realm.network.RealmServer;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import com.google.inject.Guice;
-import com.google.inject.Inject;
-import com.google.inject.Injector;
-import koh.realm.handlers.HandlersProvider;
-import koh.realm.inter.InterServer;
-import koh.realm.network.RealmHandler;
-import koh.realm.network.RealmServer;
-import koh.realm.utils.Settings;
 
 /**
  *

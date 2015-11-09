@@ -52,6 +52,6 @@ public class RealmModule extends AbstractModule {
     @Provides
     @Singleton
     Settings provideSettings() {
-        return new Settings("/Users/loadlow/MEGA/Developpement/GitLab/alleos13/koh/koh-realm/Settings.ini");
+        return new Settings("Settings.ini");
     }
 }
