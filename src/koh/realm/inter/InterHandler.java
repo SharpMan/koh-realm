@@ -1,16 +1,16 @@
 package koh.realm.inter;
 
 import com.google.inject.Inject;
-import com.google.inject.Singleton;
+import com.google.inject.name.Named;
 import koh.inter.InterMessage;
 import koh.inter.messages.HelloMessage;
-import koh.realm.Logs;
-import koh.realm.Main;
+import koh.patterns.event.EventExecutor;
+import koh.patterns.handler.ConsumerHandlerExecutor;
+import koh.patterns.handler.SimpleHandlerExecutor;
+import koh.realm.app.Logs;
 import koh.realm.dao.api.GameServerDAO;
-import koh.realm.dao.impl.GameServerDAOImpl;
 import koh.realm.entities.GameServer;
-import koh.realm.handlers.HandlersProvider;
-import koh.realm.utils.Settings;
+import koh.realm.inter.annotations.InterPackage;
 import org.apache.mina.core.service.IoHandlerAdapter;
 import org.apache.mina.core.session.IdleStatus;
 import org.apache.mina.core.session.IoSession;
@@ -23,12 +23,24 @@ import org.apache.mina.core.session.IoSession;
 public class InterHandler extends IoHandlerAdapter {
 
     private final Logs logs;
-    private final HandlersProvider<GameServer, InterMessage> handlers;
+    private final ConsumerHandlerExecutor<GameServer, InterMessage> messagesHandling;
+    private final SimpleHandlerExecutor<GameServer> actionsHandling;
+    private final EventExecutor eventListening;
 
     @Inject
-    public InterHandler(Logs logs, HandlersProvider<GameServer, InterMessage> handlers) {
+    public InterHandler(Logs logs, @InterPackage SimpleHandlerExecutor<GameServer> actionsHandling,
+                        @InterPackage ConsumerHandlerExecutor<GameServer, InterMessage> messagesHandling,
+                        @InterPackage EventExecutor eventListening) {
         this.logs = logs;
-        this.handlers = handlers;
+        this.actionsHandling = actionsHandling;
+        this.messagesHandling = messagesHandling;
+        this.eventListening = eventListening;
+
+        try {
+            messagesHandling.handle(new GameServer(), new HelloMessage());
+        } catch (Throwable e) {
+            System.out.println(e.getCause());
+        }
     }
 
     @Override
@@ -44,17 +56,13 @@ public class InterHandler extends IoHandlerAdapter {
         InterMessage message = (InterMessage) oMsg;
         Object objClient = session.getAttribute("session");
         if (objClient != null && objClient instanceof GameServer) {
+            //TODO(LoadLow) : context management in each Client
             GameServer client = (GameServer) objClient;
-            handlers.getLambdas(message.getClass()).anyMatch((method) -> {
-                try {
-                    return method.handle(client, message);
-                } catch (Throwable throwable) {
-                    throwable.printStackTrace();
-                    return false;
-                }
-            });
-
-            client.parsePacket(message);
+            try {
+                messagesHandling.handle(client, message);
+            } catch (Throwable throwable) {
+                throwable.printStackTrace();
+            }
             logs.writeInfo("[INFOS] " + client.Name + " recv >> " + message.getClass().getSimpleName());
         } else {
             if (oMsg instanceof HelloMessage) {

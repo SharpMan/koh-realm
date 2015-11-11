@@ -3,19 +3,22 @@ package koh.realm.entities;
 import koh.inter.InterMessage;
 import koh.inter.MessageEnum;
 import koh.inter.messages.PlayerCreatedMessage;
+import koh.patterns.handler.api.HandlerEmitter;
+import koh.patterns.handler.context.Context;
 import koh.protocol.client.enums.ServerStatusEnum;
 import koh.protocol.client.types.GameServerInformations;
 import koh.protocol.messages.connection.ServerStatusUpdateMessage;
 import koh.realm.Main;
 import koh.realm.dao.api.CharacterDAO;
 import koh.realm.dao.impl.CharacterDAOImpl;
+import koh.realm.inter.contexts.Authenticating;
 import org.apache.mina.core.session.IoSession;
 
 /**
  *
  * @author Neo-Craft
  */
-public class GameServer {
+public class GameServer implements HandlerEmitter {
 
     public short ID;
     public String Name, Adress, Hash;
@@ -77,4 +80,13 @@ public class GameServer {
         }
     }
 
+    @Override
+    public void setHandlerContext(Context context) {
+
+    }
+
+    @Override
+    public Context getHandlerContext() {
+        return new Authenticating();
+    }
 }

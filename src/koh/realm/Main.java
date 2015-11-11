@@ -2,6 +2,8 @@ package koh.realm;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import koh.realm.app.AppModule;
+import koh.realm.app.Logs;
 import koh.realm.inter.InterServer;
 import koh.realm.network.RealmServer;
 
@@ -29,20 +31,11 @@ public class Main {
 
     public static void main(String[] args) {
         try {
-            registerShutdownHook(() -> {
-                for(int i=runnableList.size()-1; i > 0; --i) {
-                    try {
-                        runnableList.get(i).run();
-                    }catch(Throwable tr) {
-                        tr.printStackTrace();
-                    }
-                }
-            });
+            registerShutdownHooks();
 
             long time = System.currentTimeMillis();
 
-            Injector guice = Guice.createInjector();
-            Injector appModule = guice.createChildInjector(new RealmModule(guice));
+            Injector appModule = new AppModule().launch();
 
             appModule.getInstance(InterServer.class)
                     .configure().launch();
@@ -65,13 +58,18 @@ public class Main {
         return running;
     }
 
-    private static void registerShutdownHook(Runnable runnable) {
+    private static void registerShutdownHooks() {
         Runtime.getRuntime().addShutdownHook(new Thread() {
 
             @Override
             public void run() {
-                if(runnable != null)
-                    runnable.run();
+                for(int i=runnableList.size()-1; i > 0; --i) {
+                    try {
+                        runnableList.get(i).run();
+                    }catch(Throwable tr) {
+                        tr.printStackTrace();
+                    }
+                }
             }
 
         });

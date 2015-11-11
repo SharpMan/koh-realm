@@ -1,22 +1,20 @@
 package koh.realm.network;
 
 import com.google.inject.Inject;
+import koh.patterns.event.EventExecutor;
+import koh.patterns.handler.ConsumerHandlerExecutor;
 import koh.protocol.client.Message;
-import koh.protocol.messages.connection.HelloConnectMessage;
 import koh.protocol.messages.handshake.ProtocolRequired;
 import koh.protocol.messages.security.RawDataMessage;
-import koh.realm.Logs;
-import koh.realm.Main;
-import koh.realm.handlers.HandleMethod;
-import koh.realm.handlers.HandlersProvider;
+import koh.realm.app.Logs;
+import koh.patterns.handler.ConsumerHandlingProvider;
+import koh.realm.entities.GameServer;
+import koh.realm.inter.events.GameServerAuthenticatedEvent;
+import koh.realm.network.annotations.RealmPackage;
 import koh.realm.utils.Settings;
 import org.apache.mina.core.service.IoHandlerAdapter;
 import org.apache.mina.core.session.IdleStatus;
 import org.apache.mina.core.session.IoSession;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 /**
  *
@@ -29,16 +27,15 @@ public class RealmHandler extends IoHandlerAdapter {
 
     private final Settings settings;
     private final Logs logs;
-    private final HandlersProvider<RealmClient, Message> handlers;
+
+    private final ConsumerHandlerExecutor<RealmClient, Message> handlers;
 
     @Inject
-    public RealmHandler(Settings settings, Logs logs, HandlersProvider<RealmClient, Message> handlers) {
-
+    public RealmHandler(Settings settings, Logs logs, @RealmPackage ConsumerHandlerExecutor<RealmClient, Message> handlers, @RealmPackage EventExecutor events) {
         this.logs = logs;
         this.settings = settings;
         this.handlers = handlers;
-
-
+        events.fire(new GameServerAuthenticatedEvent(new GameServer(), 33));
     }
 
     @Override
@@ -57,14 +54,11 @@ public class RealmHandler extends IoHandlerAdapter {
         Object objClient = session.getAttribute("session");
         if (objClient != null && objClient instanceof RealmClient) {
             RealmClient client = (RealmClient) objClient;
-            handlers.getLambdas(message.getClass()).anyMatch((method) -> {
-                try {
-                    return method.handle(client, message);
-                } catch (Throwable throwable) {
-                    throwable.printStackTrace();
-                    return false;
-                }
-            });
+            try {
+                handlers.handle(client, message);
+            } catch (Throwable throwable) {
+                throwable.printStackTrace();
+            }
             //client.parsePacket(message);
         }
     }

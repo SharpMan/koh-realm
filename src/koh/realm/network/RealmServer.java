@@ -5,11 +5,15 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 
 import com.google.inject.Inject;
-import com.google.inject.Singleton;
+import koh.inter.InterMessage;
+import koh.inter.messages.HelloMessage;
+import koh.patterns.event.EventListeningProvider;
+import koh.patterns.handler.ConsumerHandlerExecutor;
+import koh.patterns.handler.ConsumerHandlingProvider;
 import koh.protocol.client.Message;
 import koh.protocol.client.codec.ProtocolEncoder;
-import koh.realm.Logs;
 import koh.realm.Main;
+import koh.realm.entities.GameServer;
 import koh.realm.network.RealmClient.State;
 import koh.realm.network.codec.ProtocolDecoder;
 import koh.realm.utils.Settings;
@@ -57,6 +61,8 @@ public class RealmServer {
         return this;
     }
 
+    @Inject private ConsumerHandlerExecutor<GameServer, InterMessage> messagesHandling;
+
     public RealmServer launch() {
         try {
             this.acceptor.bind(address);
@@ -69,6 +75,13 @@ public class RealmServer {
                     e.printStackTrace();
                 }
             });
+
+            GameServer server = new GameServer();
+            try {
+                messagesHandling.handle(server, new HelloMessage());
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
 
         } catch (IOException ex) {
             ex.printStackTrace();

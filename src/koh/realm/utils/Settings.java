@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.google.inject.Singleton;
-import koh.realm.Logs;
 
 /**
  *

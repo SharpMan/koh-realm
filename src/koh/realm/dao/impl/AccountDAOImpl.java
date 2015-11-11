@@ -12,8 +12,7 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 import com.google.inject.Inject;
-import koh.realm.DatabaseSource;
-import koh.realm.Main;
+import koh.realm.app.DatabaseSource;
 import koh.realm.dao.AccountReference;
 import koh.realm.dao.api.AccountDAO;
 import koh.realm.entities.Account;

@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import koh.cypher.RSACiphers;
 import koh.inter.messages.ExpulseAccountMessage;
 import koh.inter.messages.PlayerCommingMessage;
+import koh.patterns.handler.api.HandlerEmitter;
+import koh.patterns.handler.context.Context;
 import koh.protocol.client.BufUtils;
 import koh.protocol.client.Message;
 import koh.protocol.client.enums.IdentificationFailureReason;
@@ -38,7 +40,17 @@ import org.apache.mina.core.session.IoSession;
  *
  * @author Neo-Craft
  */
-public final class RealmClient {
+public final class RealmClient implements HandlerEmitter {
+
+    @Override
+    public void setHandlerContext(Context context) {
+
+    }
+
+    @Override
+    public Context getHandlerContext() {
+        return null;
+    }
 
     public enum State {
 

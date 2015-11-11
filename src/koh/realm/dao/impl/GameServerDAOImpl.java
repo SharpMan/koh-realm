@@ -1,8 +1,8 @@
 package koh.realm.dao.impl;
 
 import com.google.inject.Inject;
-import koh.realm.DatabaseSource;
-import koh.realm.Logs;
+import koh.realm.app.DatabaseSource;
+import koh.realm.app.Logs;
 import koh.realm.dao.api.GameServerDAO;
 import koh.realm.entities.GameServer;
 import koh.realm.utils.sql.ConnectionResult;
@@ -26,7 +26,7 @@ public class GameServerDAOImpl extends GameServerDAO {
     public GameServerDAOImpl(DatabaseSource dbSource, Logs logs) {
         this.dbSource = dbSource;
 
-        logs.writeInfo(this.loadAll() + " WorldServers loaded ");
+        //logs.writeInfo(this.loadAll() + " WorldServers loaded ");
     }
 
     private static final String FIND_ALL = "SELECT * from realmlist;";

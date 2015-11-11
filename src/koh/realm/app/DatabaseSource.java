@@ -1,9 +1,10 @@
-package koh.realm;
+package koh.realm.app;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import koh.realm.Main;
 import koh.realm.utils.Settings;
 import koh.realm.utils.sql.ConnectionResult;
 import koh.realm.utils.sql.ConnectionStatement;
@@ -33,7 +34,7 @@ public class DatabaseSource {
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
 
-        this.dataSource = new HikariDataSource(config);
+        this.dataSource = null;
 
         Main.onShutdown(this::stop);
     }

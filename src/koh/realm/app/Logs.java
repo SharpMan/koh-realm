@@ -1,7 +1,8 @@
-package koh.realm;
+package koh.realm.app;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import koh.realm.Main;
 import koh.realm.utils.Settings;
 
 import java.io.*;
