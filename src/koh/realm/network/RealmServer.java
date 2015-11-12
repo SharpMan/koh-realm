@@ -7,15 +7,13 @@ import java.util.ArrayList;
 import com.google.inject.Inject;
 import koh.inter.InterMessage;
 import koh.inter.messages.HelloMessage;
-import koh.patterns.event.EventListeningProvider;
 import koh.patterns.handler.ConsumerHandlerExecutor;
-import koh.patterns.handler.ConsumerHandlingProvider;
 import koh.protocol.client.Message;
-import koh.protocol.client.codec.ProtocolEncoder;
+import koh.protocol.client.codec.Dofus2ProtocolDecoder;
+import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.realm.Main;
 import koh.realm.entities.GameServer;
 import koh.realm.network.RealmClient.State;
-import koh.realm.network.codec.ProtocolDecoder;
 import koh.realm.utils.Settings;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
@@ -31,12 +29,22 @@ public class RealmServer {
     private final NioSocketAcceptor acceptor;
     private final InetSocketAddress address;
     private final RealmHandler handler;
-    private final ProtocolDecoder decoder;
-    private final ProtocolEncoder encoder;
+    private final Dofus2ProtocolDecoder decoder;
+    private final Dofus2ProtocolEncoder encoder;
+
+    /**
+     * 1 * estimated client optimal size (64)
+     */
+    private static final int DEFAULT_READ_SIZE = 64;
+
+    /**
+     * max used client packet size (realm) + additional size for infos of the next packet
+     */
+    private static final int MAX_READ_SIZE = 4096 + 0xFF;
 
     @Inject
     public RealmServer(Settings settings, RealmHandler handler,
-                       ProtocolDecoder decoder, ProtocolEncoder encoder) {
+                       Dofus2ProtocolDecoder decoder, Dofus2ProtocolEncoder encoder) {
         this.handler = handler;
         this.acceptor = new NioSocketAcceptor(Runtime.getRuntime().availableProcessors() * 4);
         this.address = new InetSocketAddress(settings.getStringElement("Login.Host"),
@@ -52,8 +60,8 @@ public class RealmServer {
         this.acceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(encoder, decoder));
         this.acceptor.setHandler(handler);
 
-        //this.acceptor.getSessionConfig().setMaxReadBufferSize(2048); 
-        this.acceptor.getSessionConfig().setReadBufferSize(1024); // Debug
+        this.acceptor.getSessionConfig().setMaxReadBufferSize(MAX_READ_SIZE);
+        this.acceptor.getSessionConfig().setMinReadBufferSize(DEFAULT_READ_SIZE);
         this.acceptor.getSessionConfig().setReaderIdleTime(Main.MIN_TIMEOUT * 60);
         this.acceptor.getSessionConfig().setTcpNoDelay(true);
         this.acceptor.getSessionConfig().setKeepAlive(true);
@@ -91,12 +99,14 @@ public class RealmServer {
         //this.inactivity_manager.start();
     }
 
+    //TODO(Alleos) : use parallel() or Executors.newFixedThreadPool(n) for an async foreach before async write
     public void SendPacket(Message message) {
         acceptor.getManagedSessions().values().stream().filter((session) -> (session.getAttribute("session") instanceof RealmClient) && ((RealmClient) session.getAttribute("session")).ClientState == State.ON_GAMESERVER_LIST).forEach((session) -> {
             ((RealmClient) session.getAttribute("session")).sendPacket(message);
         });
     }
 
+    //TODO(Alleos) : use concurrent hashMap with WeakReferences
     public ArrayList<RealmClient> getAllClient() {
         ArrayList<RealmClient> client = new ArrayList<>();
         acceptor.getManagedSessions().values().stream().filter((session) -> (session.getAttribute("session") instanceof RealmClient)).forEach((session) -> {
@@ -105,6 +115,7 @@ public class RealmServer {
         return client;
     }
 
+    //TODO(Alleos) : use concurrent hashMap<Integer, RealmClient> with WeakReferences
     public RealmClient getClient(int guid) {
         for (IoSession session : acceptor.getManagedSessions().values()) {
             if (session.getAttribute("session") instanceof RealmClient) {
