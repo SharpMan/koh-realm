@@ -2,6 +2,7 @@ package koh.realm.network;
 
 import com.google.inject.Inject;
 import koh.protocol.client.Message;
+import koh.protocol.client.MessageQueue;
 import koh.protocol.messages.connection.HelloConnectMessage;
 import koh.protocol.messages.handshake.ProtocolRequired;
 import koh.protocol.messages.security.RawDataMessage;
@@ -69,10 +70,17 @@ public class RealmHandler extends IoHandlerAdapter {
         }
     }
 
-    @Override
+   @Override
     public void messageSent(IoSession session, Object arg1) throws Exception {
-        Message message = (Message) arg1;
-        logs.writeDebug("[DEBUG] Client send >> " + message.getClass().getSimpleName());
+        if (arg1 instanceof Message) {
+            Main.Logs().writeDebug(new StringBuilder("[DEBUG] Client send >> ").append(((Message) arg1).getClass().getSimpleName()).toString());
+        } else if (arg1 instanceof MessageQueue) {
+            for (Message message : ((MessageQueue) arg1).get()) {
+                Main.Logs().writeDebug(new StringBuilder("[DEBUG] Client send >> ").append(message.getClass().getSimpleName()).toString());
+            }
+        } else{
+            throw new NullPointerException();
+        }
     }
 
     @Override
@@ -98,6 +106,8 @@ public class RealmHandler extends IoHandlerAdapter {
     @Override
     public void exceptionCaught(IoSession session, Throwable cause) throws Exception {
         Object objClient = session.getAttribute("session");
+        if(Logs.DEBUG)
+           cause.printStackTrace();
         if (objClient != null && objClient instanceof RealmClient) {
             RealmClient client = (RealmClient) objClient;
             client.close();
