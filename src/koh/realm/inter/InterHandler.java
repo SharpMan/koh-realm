@@ -24,17 +24,15 @@ public class InterHandler extends IoHandlerAdapter {
 
     private final Logs logs;
     private final ConsumerHandlerExecutor<GameServer, InterMessage> messagesHandling;
-    private final SimpleHandlerExecutor<GameServer> actionsHandling;
-    private final EventExecutor eventListening;
 
     @Inject
     public InterHandler(Logs logs, @InterPackage SimpleHandlerExecutor<GameServer> actionsHandling,
                         @InterPackage ConsumerHandlerExecutor<GameServer, InterMessage> messagesHandling,
                         @InterPackage EventExecutor eventListening) {
         this.logs = logs;
-        this.actionsHandling = actionsHandling;
+        SimpleHandlerExecutor<GameServer> actionsHandling1 = actionsHandling;
         this.messagesHandling = messagesHandling;
-        this.eventListening = eventListening;
+        EventExecutor eventListening1 = eventListening;
 
         try {
             messagesHandling.handle(new GameServer(), new HelloMessage());

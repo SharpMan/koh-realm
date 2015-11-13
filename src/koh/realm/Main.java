@@ -1,8 +1,9 @@
 package koh.realm;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
+import com.google.inject.Key;
+import koh.patterns.services.ServicesProvider;
 import koh.realm.app.AppModule;
+import koh.realm.app.DatabaseSource;
 import koh.realm.app.Logs;
 import koh.realm.inter.InterServer;
 import koh.realm.network.RealmServer;
@@ -35,17 +36,19 @@ public class Main {
 
             long time = System.currentTimeMillis();
 
-            Injector appModule = new AppModule().launch();
+            AppModule app = new AppModule();
+            ServicesProvider services = app.create(
+                    DatabaseSource.class,
+                    Logs.class,
+                    RealmServer.class,
+                    InterServer.class
+            );
 
-            appModule.getInstance(InterServer.class)
-                    .configure().launch();
-
-            appModule.getInstance(RealmServer.class)
-                    .configure().launch();
+            services.start();
 
             running = true;
 
-            appModule.getInstance(Logs.class)
+            app.resolver().getInstance(Key.get(Logs.class, ServicesProvider.inGroup("RealmServices")))
                     .writeInfo("RealmServer start in " + (System.currentTimeMillis() - time) + " ms.");
 
         } catch (Exception e) {

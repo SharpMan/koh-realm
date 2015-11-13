@@ -1,71 +1,42 @@
 package koh.realm.app;
 
 import com.google.inject.*;
-import koh.commons.ImprovedCachedThreadPool;
-import koh.inter.InterMessage;
-import koh.patterns.event.EventExecutor;
-import koh.patterns.handler.ConsumerHandlerExecutor;
-import koh.patterns.handler.SimpleHandlerExecutor;
-import koh.protocol.client.Message;
-import koh.realm.entities.GameServer;
-import koh.realm.inter.annotations.InterPackage;
-import koh.realm.network.RealmClient;
-import koh.realm.network.annotations.RealmPackage;
+import koh.patterns.services.ServicesProvider;
+import koh.patterns.services.api.Service;
+import koh.realm.utils.Settings;
 
 public class AppModule extends AbstractModule {
 
-    private final Injector services;
+    private Injector app;
 
     public AppModule() {
-        this.services = Guice.createInjector()
-                .createChildInjector(new ServicesModule());
+        this.app = Guice.createInjector(this);
     }
 
-    public Injector launch() {
-        Injector base = services.createChildInjector(this);
-        AbstractModule core = new CoreModule(base);
-        base.injectMembers(core);
-        return base.createChildInjector(core);
+    @SafeVarargs
+    public final ServicesProvider create(Class<? extends Service>... services) {
+        AbstractModule core = new CoreModule(app);
+        app.injectMembers(core);
+
+        ServicesProvider provider = new ServicesProvider("RealmServices", app, services);
+        app = app.createChildInjector(core, provider);
+
+        return provider;
+    }
+
+    public Injector resolver() {
+        return app;
     }
 
     @Override
     protected void configure() {
+        install(new ExecutorsModule());
     }
 
-    @InterPackage @Provides
+    @Provides
     @Singleton
-    ConsumerHandlerExecutor<GameServer, InterMessage> provideInterMessagesExecutor() {
-        return new ConsumerHandlerExecutor<>();
-    }
-
-    @InterPackage @Provides
-    @Singleton
-    SimpleHandlerExecutor<GameServer> provideInterActionsExecutor() {
-        return new SimpleHandlerExecutor<>();
-    }
-
-    @InterPackage @Provides
-    @Singleton
-    EventExecutor provideInterEventsExecutor() {
-        return new EventExecutor(new ImprovedCachedThreadPool("InterEventsExecutor", 10, 50));
-    }
-
-    @RealmPackage @Provides
-    @Singleton
-    EventExecutor provideRealmEventsExecutor() {
-        return new EventExecutor(new ImprovedCachedThreadPool("InterEventsExecutor", 10, 50));
-    }
-
-    @RealmPackage @Provides
-    @Singleton
-    ConsumerHandlerExecutor<RealmClient, Message> provideRealmMessagesExecutor() {
-        return new ConsumerHandlerExecutor<>();
-    }
-
-    @RealmPackage @Provides
-    @Singleton
-    SimpleHandlerExecutor<RealmClient> provideRealmActionsExecutor() {
-        return new SimpleHandlerExecutor<>();
+    Settings provideSettings() {
+        return new Settings("../koh-realm/Settings.ini");
     }
 
 }

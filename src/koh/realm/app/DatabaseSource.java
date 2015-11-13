@@ -1,10 +1,18 @@
 package koh.realm.app;
 
+import com.google.inject.Binder;
 import com.google.inject.Inject;
-import com.google.inject.Singleton;
+import com.google.inject.Scopes;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import koh.realm.Main;
+import koh.patterns.services.api.DependsOn;
+import koh.patterns.services.api.Service;
+import koh.realm.dao.api.AccountDAO;
+import koh.realm.dao.api.CharacterDAO;
+import koh.realm.dao.api.GameServerDAO;
+import koh.realm.dao.impl.AccountDAOImpl;
+import koh.realm.dao.impl.CharacterDAOImpl;
+import koh.realm.dao.impl.GameServerDAOImpl;
 import koh.realm.utils.Settings;
 import koh.realm.utils.sql.ConnectionResult;
 import koh.realm.utils.sql.ConnectionStatement;
@@ -18,13 +26,16 @@ import java.sql.Statement;
  *
  * @author Neo-Craft
  */
-public class DatabaseSource {
 
-    private final HikariDataSource dataSource;
+@DependsOn({Logs.class})
+public class DatabaseSource implements Service {
+
+    private final HikariConfig config;
+    private HikariDataSource dataSource;
 
     @Inject
     public DatabaseSource(Settings settings) {
-        HikariConfig config = new HikariConfig();
+        this.config = new HikariConfig();
         config.setJdbcUrl("jdbc:mysql://" + settings.getStringElement("Database.Host") + "/" + settings.getStringElement("Database.Name"));
 
         //config.setDataSourceClassName("com.mysql.jdbc.jdbc2.optional.MysqlDataSource");
@@ -33,10 +44,6 @@ public class DatabaseSource {
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-
-        this.dataSource = null;
-
-        Main.onShutdown(this::stop);
     }
 
     public Connection getConnectionOfPool() throws SQLException {
@@ -71,12 +78,28 @@ public class DatabaseSource {
         Connection connection = this.getConnectionOfPool();
         Statement statement = connection.createStatement();
         if(secsTimeout > 0)
-            statement.setQueryTimeout(300);
+            statement.setQueryTimeout(secsTimeout);
         return new ConnectionResult(connection, statement, statement.executeQuery(query));
     }
 
+    @Override
+    public void start() {
+        if(dataSource != null && !dataSource.isClosed())
+            dataSource.close();
+        //this.dataSource = new HikariDataSource(config);
+    }
+
+    @Override
     public void stop() {
-        dataSource.close();
+        if(dataSource != null)
+            dataSource.close();
+    }
+
+    @Override
+    public void configure(Binder binder) {
+        binder.bind(AccountDAO.class).to(AccountDAOImpl.class).in(Scopes.SINGLETON);
+        binder.bind(CharacterDAO.class).to(CharacterDAOImpl.class).in(Scopes.SINGLETON);
+        binder.bind(GameServerDAO.class).to(GameServerDAOImpl.class).in(Scopes.SINGLETON);
     }
 
 }

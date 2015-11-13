@@ -1,9 +1,6 @@
 package koh.realm.app;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-import koh.realm.Main;
-import koh.realm.utils.Settings;
+import koh.patterns.services.api.Service;
 
 import java.io.*;
 import java.util.Calendar;
@@ -13,7 +10,7 @@ import java.util.Calendar;
  * @author Alleos13
  */
 
-public class Logs {
+public class Logs implements Service {
 
     private PrintStream Log_Errors;
     private BufferedWriter Log_Infos;
@@ -21,12 +18,8 @@ public class Logs {
 
     private boolean DEBUG = true;
 
-    @Inject
-    public Logs(Settings settings) {
+    public Logs() {
         this.createdDate = getDay();
-        initialize();
-
-        Main.onShutdown(this::close);
     }
 
     private synchronized static void checkFolders(String createdDate) {
@@ -157,4 +150,15 @@ public class Logs {
         } catch (IOException e) {
         }
     }
+
+    @Override
+    public void start() {
+        initialize();
+    }
+
+    @Override
+    public void stop() {
+        close();
+    }
+
 }

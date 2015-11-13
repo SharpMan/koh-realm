@@ -9,6 +9,7 @@ import koh.patterns.handler.ConsumerHandlerExecutor;
 import koh.patterns.handler.ConsumerHandlingProvider;
 import koh.patterns.handler.SimpleHandlerExecutor;
 import koh.patterns.handler.SimpleHandlingProvider;
+import koh.patterns.services.ServicesProvider;
 import koh.protocol.client.Message;
 import koh.realm.entities.GameServer;
 import koh.realm.inter.InterServer;
@@ -62,9 +63,5 @@ class CoreModule extends AbstractModule {
                 new EventListeningProvider(realmEventsExecutor, parent, "koh.realm.network")
 
         );
-
-        bind(InterServer.class).asEagerSingleton();
-        bind(RealmServer.class).asEagerSingleton();
     }
-
 }

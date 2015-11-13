@@ -1,18 +1,21 @@
 package koh.realm.network;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 
 import com.google.inject.Inject;
 import koh.inter.InterMessage;
-import koh.inter.messages.HelloMessage;
 import koh.patterns.handler.ConsumerHandlerExecutor;
+import koh.patterns.services.api.DependsOn;
+import koh.patterns.services.api.Service;
 import koh.protocol.client.Message;
 import koh.protocol.client.codec.Dofus2ProtocolDecoder;
 import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.realm.Main;
+import koh.realm.app.DatabaseSource;
+import koh.realm.app.Logs;
 import koh.realm.entities.GameServer;
+import koh.realm.inter.InterServer;
 import koh.realm.network.RealmClient.State;
 import koh.realm.utils.Settings;
 import org.apache.mina.core.session.IoSession;
@@ -24,7 +27,8 @@ import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
  * @author Neo-Craft
  */
 
-public class RealmServer {
+@DependsOn({Logs.class, DatabaseSource.class, InterServer.class})
+public class RealmServer implements Service {
 
     private final NioSocketAcceptor acceptor;
     private final InetSocketAddress address;
@@ -71,34 +75,6 @@ public class RealmServer {
 
     @Inject private ConsumerHandlerExecutor<GameServer, InterMessage> messagesHandling;
 
-    public RealmServer launch() {
-        try {
-            this.acceptor.bind(address);
-            //Connect the acceptor with the HostAdress
-
-            Main.onShutdown(() -> {
-                try {
-                    stop();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            });
-
-            GameServer server = new GameServer();
-            try {
-                messagesHandling.handle(server, new HelloMessage());
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
-
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-
-        return this;
-        //this.inactivity_manager.start();
-    }
-
     //TODO(Alleos) : use parallel() or Executors.newFixedThreadPool(n) for an async foreach before async write
     public void SendPacket(Message message) {
         acceptor.getManagedSessions().values().stream().filter((session) -> (session.getAttribute("session") instanceof RealmClient) && ((RealmClient) session.getAttribute("session")).ClientState == State.ON_GAMESERVER_LIST).forEach((session) -> {
@@ -128,7 +104,17 @@ public class RealmServer {
         return null;
     }
 
-    public void stop() throws InterruptedException {
+    @Override
+    public void start() {
+        this.configure();
+        try {
+            this.acceptor.bind(address);
+        }catch(Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void stop() {
         acceptor.unbind();
         acceptor.dispose(true);
     }
