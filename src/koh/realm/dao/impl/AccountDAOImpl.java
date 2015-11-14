@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 import com.google.inject.Inject;
+import koh.concurrency.AlreadyReferenced;
 import koh.realm.app.DatabaseSource;
 import koh.realm.dao.AccountReference;
 import koh.realm.dao.api.AccountDAO;
@@ -27,22 +28,25 @@ public class AccountDAOImpl extends AccountDAO {
 
     private final DatabaseSource dbSource;
 
+    private final int ACCOUNT_TIMEOUT = 60 * 1000 * 60;
+
     @Inject
     public AccountDAOImpl(DatabaseSource dbSource) {
         this.dbSource = dbSource;
 
         ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
         service.scheduleAtFixedRate((Runnable) () -> {
-            ArrayList<AccountReference> copy = new ArrayList<>();
-            copy.addAll(hashByName.values());
+            ArrayList<AccountReference> copy = new ArrayList<>(hashByName.values());
             for (AccountReference ref : copy) {
-                if (!ref.isLogged() && (System.currentTimeMillis() - ref.lastLogin) > 60 * 1000 * 60) {
-                    hashByName.remove(ref.name);
-                    hashByGuid.remove(ref.guid);
-                }
+                ref.sync(() -> {
+                    if (!ref.alive() && ref.accessedAfter(ACCOUNT_TIMEOUT)) {
+                        hashByName.remove(ref.getName());
+                        hashByGuid.remove(ref.getGuid());
+                    }
+                });
             }
             copy.clear();
-        }, 60 * 1000 * 60, 60 * 1000 * 60, TimeUnit.MILLISECONDS);
+        }, 30, 30, TimeUnit.MINUTES);
     }
 
     private final Map<Integer, AccountReference> hashByGuid = new ConcurrentHashMap<>();
@@ -127,35 +131,38 @@ public class AccountDAOImpl extends AccountDAO {
                 return null;
 
             AccountReference other = this.getCompte(RS.getInt("id"));
-            if ((other != null) && (other.isLogged())) {
+            if (other != null && other.alive()) {
                 other.get().Client.timeOut(); //was disco message
-                throw new NullPointerException();
-            } else {
-                return new Account() {
-                    {
-                        ID = RS.getInt("id");
-                        Username = RS.getString("username");
-                        SHA_HASH = RS.getString("sha_pass_hash");
-                        Password = RS.getString("password");
-                        NickName = RS.getString("nickname");
-                        Right = RS.getByte("rights");
-                        SecretQuestion = RS.getString("secret_question");
-                        SecretAnswer = RS.getString("secret_answer");
-                        LastIP = RS.getString("last_ip");;
-                        try {
-                            last_login = RS.getTimestamp("last_login");
-                        } catch (Exception e) {
-                            last_login = Timestamp.from(Instant.now());
-                        }
-                        if (RS.getString("servers") != null) {
-                            for (int i = 0; i < RS.getString("servers").split(",").length; i++) {
-                                Characters.put(Short.parseShort(RS.getString("servers").split(",")[i]), Byte.parseByte(RS.getString("players").split(",")[i]));
-                            }
-                        }
-                    }
-                };
+                throw new AlreadyReferenced();
             }
+
+            return new Account() {
+                {
+                    ID = RS.getInt("id");
+                    Username = RS.getString("username");
+                    SHA_HASH = RS.getString("sha_pass_hash");
+                    Password = RS.getString("password");
+                    NickName = RS.getString("nickname");
+                    Right = RS.getByte("rights");
+                    SecretQuestion = RS.getString("secret_question");
+                    SecretAnswer = RS.getString("secret_answer");
+                    LastIP = RS.getString("last_ip");;
+                    try {
+                        last_login = RS.getTimestamp("last_login");
+                    } catch (Exception e) {
+                        last_login = Timestamp.from(Instant.now());
+                    }
+                    if (RS.getString("servers") != null) {
+                        String[] servers = RS.getString("servers").split(",");
+                        String[] players = RS.getString("players").split(",");
+
+                        for (int i = 0; i < RS.getString("servers").split(",").length; i++)
+                            Characters.put(Short.parseShort(servers[i]), Byte.parseByte(players[i]));
+                    }
+                }
+            };
         } catch (SQLException e) {
+            //TODO propagate Errors
             e.printStackTrace();
             //Main.Logs().writeInfo("Connexion a la DB Perdue, deconnexion du compte en connexion en attendant la reconnexion de la DB...");
             throw new Exception();

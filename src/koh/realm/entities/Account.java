@@ -4,6 +4,7 @@ import java.security.MessageDigest;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
+
 import koh.realm.network.RealmClient;
 
 /**

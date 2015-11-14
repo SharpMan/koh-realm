@@ -1,40 +1,15 @@
 package koh.realm.network;
 
-import java.net.InetSocketAddress;
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.util.ArrayList;
 import koh.cypher.RSACiphers;
-import koh.inter.messages.ExpulseAccountMessage;
-import koh.inter.messages.PlayerCommingMessage;
 import koh.patterns.handler.api.HandlerEmitter;
 import koh.patterns.handler.context.Context;
-import koh.protocol.client.BufUtils;
 import koh.protocol.client.Message;
-import koh.protocol.client.enums.IdentificationFailureReason;
-import koh.protocol.client.enums.ServerConnectionError;
-import koh.protocol.client.enums.ServerStatusEnum;
-import koh.protocol.client.types.GameServerInformations;
-import koh.protocol.messages.connection.CredentialsAcknowledgementMessage;
-import koh.protocol.messages.connection.IdentificationFailedMessage;
 import koh.protocol.messages.connection.IdentificationMessage;
-import koh.protocol.messages.connection.IdentificationSuccessMessage;
-import koh.protocol.messages.connection.LoginQueueStatusMessage;
-import koh.protocol.messages.connection.SelectedServerDataMessage;
-import koh.protocol.messages.connection.SelectedServerRefusedMessage;
-import koh.protocol.messages.connection.ServerSelectionMessage;
-import koh.protocol.messages.connection.ServersListMessage;
-import koh.realm.Main;
-import koh.realm.dao.api.AccountDAO;
-import koh.realm.dao.api.GameServerDAO;
-import koh.realm.dao.impl.AccountDAOImpl;
 import koh.realm.dao.AccountReference;
-import koh.realm.dao.impl.GameServerDAOImpl;
-import koh.realm.entities.Account;
-import koh.realm.entities.GameServer;
-import koh.realm.utils.Util;
-import org.apache.mina.core.buffer.IoBuffer;
+import koh.realm.inter.InterServerContexts;
 import org.apache.mina.core.session.IoSession;
+
+import java.net.InetSocketAddress;
 
 /**
  *
@@ -44,12 +19,11 @@ public final class RealmClient implements HandlerEmitter {
 
     @Override
     public void setHandlerContext(Context context) {
-
     }
 
     @Override
     public Context getHandlerContext() {
-        return null;
+        return InterServerContexts.Authenticated;
     }
 
     public enum State {
@@ -246,7 +220,7 @@ public final class RealmClient implements HandlerEmitter {
             //AccountDAO.get().getLoader().onClientDisconnect(this);
         }
         if (Compte != null) {
-            Compte.setLogged(null);
+            Compte.set(null);
             Compte = null;
         }
     }

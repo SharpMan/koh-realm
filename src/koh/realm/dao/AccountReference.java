@@ -1,5 +1,6 @@
 package koh.realm.dao;
 
+import koh.concurrency.MutexReference;
 import koh.realm.dao.api.AccountDAO;
 import koh.realm.entities.Account;
 
@@ -7,39 +8,34 @@ import koh.realm.entities.Account;
  *
  * @author Alleos13
  */
-public class AccountReference {
+public class AccountReference extends MutexReference<Account> {
 
-    private Account account;
-    public final int guid;
-    public final String name;
-    private boolean logged = false;
+    private String name;
+    private int guid;
 
     public AccountReference(Account account) {
+        this.set(account);
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getGuid() {
+        return guid;
+    }
+
+    @Override
+    protected void onSet(Account account) {
         this.guid = account.ID;
         this.name = account.Username;
     }
 
-    public Account get() {
-        return account;
+    @Override
+    protected void onUnset() {
+        //TODO REMOVE Entity -> DAO dependency
+        if(this.alive()) {
+        }
     }
 
-    public boolean isLogged() {
-        return account != null;
-    }
-    public long lastLogin = 0;
-
-    public synchronized void setLogged(Account logged) {
-        if (logged != null) {
-            if (account != null) {
-                throw new NullPointerException("Already logged with another account inst");
-            }
-            lastLogin = System.currentTimeMillis();
-        } else if (account != null) {
-            //AccountDAO.get().removeAccount(account);
-        }
-        if (logged == null) {
-            account.totalClear();
-        }
-        account = logged;
-    }
 }

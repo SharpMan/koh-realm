@@ -4,7 +4,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
-import koh.commons.ImprovedCachedThreadPool;
+import koh.concurrency.ImprovedCachedThreadPool;
 import koh.inter.InterMessage;
 import koh.patterns.event.EventExecutor;
 import koh.patterns.handler.ConsumerHandlerExecutor;
