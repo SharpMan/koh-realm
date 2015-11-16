@@ -15,7 +15,7 @@ import org.apache.mina.core.session.IoSession;
 public class GameServer implements HandlerEmitter {
 
     public short ID;
-    public String Name, Adress, Hash;
+    public String Name, Address, Hash;
     public short Port;
     public byte RequiredRole;
     public ServerStatusEnum State = ServerStatusEnum.OFFLINE;

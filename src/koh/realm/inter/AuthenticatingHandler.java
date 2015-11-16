@@ -32,18 +32,14 @@ public class AuthenticatingHandler implements Handler, EventListener {
 
     @ReceiveInterMessage
     public void onHello(GameServer server, HelloMessage message) throws Exception, BreakPropagation {
-        System.out.println("Heh");
-        eventListening.fire(new GameServerAuthenticatedEvent(new GameServer(), 1));
     }
 
     @Listen
     public void onReceiveEvent(GameServerAuthenticatedEvent event) {
-        System.out.println(event.numSeq + " Event gere !");
     }
 
     @Listen(priority = EventTreatmentPriority.LOWEST)
     public void onReceiveEvent2(GameServerAuthenticatedEvent event) {
-        System.out.println(event.numSeq + " Event gere premier !");
     }
 
     @Disconnect

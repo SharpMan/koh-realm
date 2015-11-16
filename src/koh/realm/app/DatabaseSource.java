@@ -86,6 +86,7 @@ public class DatabaseSource implements Service {
     public void start() {
         if(dataSource != null && !dataSource.isClosed())
             dataSource.close();
+        System.out.println("DAMN");
         //this.dataSource = new HikariDataSource(config);
     }
 

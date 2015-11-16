@@ -18,8 +18,8 @@ import koh.protocol.messages.connection.IdentificationMessage;
 import koh.protocol.messages.handshake.ProtocolRequired;
 import koh.realm.entities.GameServer;
 import koh.realm.inter.annotations.InterPackage;
-import koh.realm.network.RealmClient;
-import koh.realm.network.annotations.RealmPackage;
+import koh.realm.refact_network.RealmClient;
+import koh.realm.refact_network.RealmPackage;
 
 import java.util.HashMap;
 

@@ -1,4 +1,4 @@
-package koh.realm.network.codec;
+package koh.realm.refact_network.codec;
 
 import java.io.File;
 import java.util.Calendar;

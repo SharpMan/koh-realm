@@ -1,11 +1,17 @@
 package koh.realm.refact_network;
 
+import com.google.inject.Binder;
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import koh.mina.MinaServer;
 import koh.mina.api.MinaListener;
+import koh.mina.api.annotations.Receive;
 import koh.patterns.event.EventExecutor;
+import koh.patterns.event.EventListeningProvider;
 import koh.patterns.handler.ConsumerHandlerExecutor;
+import koh.patterns.handler.ConsumerHandlingProvider;
 import koh.patterns.handler.SimpleHandlerExecutor;
+import koh.patterns.handler.SimpleHandlingProvider;
 import koh.patterns.services.api.DependsOn;
 import koh.patterns.services.api.Service;
 import koh.protocol.client.Message;
@@ -14,7 +20,6 @@ import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.realm.app.DatabaseSource;
 import koh.realm.app.Logs;
 import koh.realm.inter.InterServer;
-import koh.realm.network.annotations.RealmPackage;
 import koh.realm.utils.Settings;
 
 import java.io.IOException;
@@ -34,6 +39,13 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
 
     private final MinaServer<RealmClient, Message> minaServer;
     private final Settings settings;
+
+    @Inject @RealmPackage
+    private ConsumerHandlerExecutor<RealmClient, Message> realmMessagesExecutor;
+    @Inject @RealmPackage
+    private SimpleHandlerExecutor<RealmClient> realmActionsExecutor;
+    @Inject @RealmPackage
+    private EventExecutor realmEventsExecutor;
 
     @Inject
     public RealmServer(Settings settings, Logs logs,
@@ -55,6 +67,7 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
         try {
             minaServer.bind(settings.getStringElement("Login.Host"),
                     settings.getIntElement("Login.Port"));
+            System.out.println(settings.getIntElement("Login.Port"));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -73,5 +86,21 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
     @Override
     public void onMessageSent(RealmClient client, Object message) {
         System.out.println("Sent : " + message);
+    }
+
+    @Override
+    public void configure(Binder binder) {
+    }
+
+    public void inject(Injector injector) {
+        injector.createChildInjector(
+                new ConsumerHandlingProvider<>(realmMessagesExecutor, injector,
+                        "koh.realm.refact_network.handlers", RealmClient.class, Receive.class, Message.class),
+
+                new SimpleHandlingProvider<>(realmActionsExecutor, injector,
+                        "koh.realm.refact_network.handlers", RealmClient.class),
+
+                new EventListeningProvider(realmEventsExecutor, injector, "koh.realm.refact_network.handlers")
+        );
     }
 }

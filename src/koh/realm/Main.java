@@ -6,7 +6,7 @@ import koh.realm.app.AppModule;
 import koh.realm.app.DatabaseSource;
 import koh.realm.app.Logs;
 import koh.realm.inter.InterServer;
-import koh.realm.network.RealmServer;
+import koh.realm.refact_network.RealmServer;
 
 import java.util.ArrayList;
 import java.util.List;

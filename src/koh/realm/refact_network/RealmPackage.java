@@ -1,12 +1,13 @@
-package koh.realm.network.annotations;
+package koh.realm.refact_network;
 
 import com.google.inject.BindingAnnotation;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-
-import static java.lang.annotation.ElementType.*;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.ElementType.METHOD;
 
 @BindingAnnotation
 @Target({ FIELD, PARAMETER, METHOD })

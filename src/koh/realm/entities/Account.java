@@ -5,18 +5,14 @@ import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
 
-import koh.realm.network.RealmClient;
+import koh.realm.refact_network.RealmClient;
+import koh.repositories.InUseCheckable;
 
 /**
  *
  * @author Neo-Craft
  */
-public class Account {
-
-    public static boolean COMPTE_LOGIN(Account to_compare, String name, String pass) {
-        return to_compare != null
-                && to_compare.isValidPass(pass);
-    }
+public class Account implements InUseCheckable {
 
     public Map<Short, Byte> Characters = new HashMap<>();
 
@@ -28,17 +24,24 @@ public class Account {
     public String SecretQuestion, SecretAnswer, LastIP;
     public Timestamp last_login;
     public long SuspendedTime;
-    public RealmClient Client;
+
+    public RealmClient getClient() {
+        return client;
+    }
+
+    public void setClient(RealmClient client) {
+        this.client = client;
+    }
+
+    public RealmClient client;
 
     public boolean isValidPass(String Pass) {
         return Password.equals(generateHash(SHA_HASH + Key + Pass));
     }
 
     public byte getPlayers(short server) {
-        if (Characters.containsKey(server)) {
-            return Characters.get(server);
-        }
-        return 0;
+        Byte count = Characters.get(server);
+        return count == null ? 0 : count;
     }
 
     public boolean isBanned() { //TODO: Banip
@@ -60,10 +63,9 @@ public class Account {
     public static final String Key = "!@#$%^&*()_+=-{}][;\";/?<>.,";
 
     public static String generateHash(String toHash) {
-        MessageDigest md = null;
         byte[] hash = null;
         try {
-            md = MessageDigest.getInstance("SHA-512");
+            MessageDigest md = MessageDigest.getInstance("SHA-512");
             hash = md.digest(toHash.getBytes("UTF-8"));
         } catch (Exception e) {
             e.printStackTrace();
@@ -85,25 +87,8 @@ public class Account {
         return sb.toString();
     }
 
-    public void totalClear() {
-        try{
-            Characters.clear();
-            Characters = null;
-            ID = 0;
-            Username = null;
-            SHA_HASH = null;
-            Password = null;
-            NickName = null;
-            Right = 0;
-            SecretQuestion = null;
-            SecretAnswer = null;
-            LastIP = null;
-            last_login = null;
-            SuspendedTime = 0;
-            Client = null;
-            this.finalize();
-        }
-        catch(Throwable ignored){ }
+    @Override
+    public boolean inUse() {
+        return client != null && client.connected();
     }
-
 }

@@ -54,7 +54,7 @@ public class InterHandler extends IoHandlerAdapter {
         InterMessage message = (InterMessage) oMsg;
         Object objClient = session.getAttribute("session");
         if (objClient != null && objClient instanceof GameServer) {
-            //TODO(LoadLow) : context management in each Client
+            //TODO(LoadLow) : context management in each client
             GameServer client = (GameServer) objClient;
             try {
                 messagesHandling.handle(client, message);

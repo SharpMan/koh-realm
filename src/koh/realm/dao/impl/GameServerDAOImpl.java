@@ -39,7 +39,7 @@ public class GameServerDAOImpl extends GameServerDAO {
                 addGameServer(new GameServer() {
                     {
                         ID = cursor.getShort("id");
-                        Adress = cursor.getString("address");
+                        Address = cursor.getString("address");
                         Name = cursor.getString("name");
                         Port = cursor.getShort("port");
                         RequiredRole = cursor.getByte("requiredRole");
