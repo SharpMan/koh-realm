@@ -76,11 +76,10 @@ public class WaitingHandler implements Handler, EventListener {
             event.getTarget().write(new LoginQueueStatusMessage((short)startPos, (short)queue.size()));
     }
 
-    private final WaitingQueue<RealmClient> queue = new WaitingQueue<>(50, 5000, this::treatWaiting, this::signalProgress);
+    private final WaitingQueue<RealmClient> queue = new WaitingQueue<>(100, 3000, this::treatWaiting, this::signalProgress);
 
     private void signalProgress(RealmClient client, int position, int total) {
-        if(position > 1)
-            eventsEmitter.fire(new ProgressChangedEvent(client, position, total));
+        eventsEmitter.fire(new ProgressChangedEvent(client, position, total));
     }
 
     @Listen
