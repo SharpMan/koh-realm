@@ -10,6 +10,8 @@ import koh.patterns.handler.api.Handler;
 import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
 import koh.protocol.client.Message;
+import koh.protocol.client.PregenMessage;
+import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.protocol.client.enums.IdentificationFailureReason;
 import koh.protocol.client.enums.ServerConnectionError;
 import koh.protocol.client.enums.ServerStatusEnum;
@@ -24,6 +26,7 @@ import koh.realm.entities.GameServer;
 import koh.realm.refact_network.RealmClient;
 import koh.realm.refact_network.RealmContexts;
 import koh.realm.utils.Util;
+import org.apache.mina.core.buffer.IoBuffer;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -31,7 +34,14 @@ import java.time.Instant;
 @RequireContexts(@Ctx(RealmContexts.Authenticated.class))
 public class AuthenticatedHandler implements Handler, EventListener {
 
-    private final static Message timeOutMessage = new IdentificationFailedMessage(IdentificationFailureReason.TIME_OUT);
+    private final PregenMessage timeOutMessage;
+
+    @Inject
+    public AuthenticatedHandler(Dofus2ProtocolEncoder encoder) {
+        this.timeOutMessage = new PregenMessage(
+                encoder.encodeMessage(new IdentificationFailedMessage(IdentificationFailureReason.TIME_OUT), IoBuffer.allocate(16)).flip().asReadOnlyBuffer()
+        );
+    }
 
     @Inject private GameServerDAO serverDAO;
     @Inject private AccountDAO accountDAO;

@@ -28,6 +28,8 @@ import koh.realm.utils.Settings;
 import koh.utils.LambdaCloseable;
 import org.apache.mina.core.buffer.IoBuffer;
 
+import java.lang.management.ManagementFactory;
+
 @RequireContexts(@Ctx(RealmContexts.Authenticating.class))
 public class AuthenticatingHandler implements Handler, EventListener {
 
@@ -43,7 +45,7 @@ public class AuthenticatingHandler implements Handler, EventListener {
         encoder.encodeMessage(authenticationBypasser, msgBuffer);
         encoder.encodeMessage(protocolRequiredMessage, msgBuffer);
 
-        this.welcomeMessageBuffer = new PregenMessage(msgBuffer.flip().asReadOnlyBuffer());
+        this.welcomeMessageBuffer = new PregenMessage(msgBuffer);
     }
 
     @Connect

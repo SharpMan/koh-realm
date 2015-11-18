@@ -88,7 +88,6 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
     public void onException(RealmClient client, Throwable exception) {
         exception.printStackTrace();
         System.out.println(exception.getMessage());
-        System.out.println("Error : " + exception.getCause().getMessage());
     }
 
     @Override

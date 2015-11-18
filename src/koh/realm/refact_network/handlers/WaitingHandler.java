@@ -10,10 +10,8 @@ import koh.patterns.event.api.Listen;
 import koh.patterns.handler.api.Handler;
 import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
-import koh.protocol.client.BufUtils;
-import koh.protocol.client.Message;
-import koh.protocol.client.MessageQueue;
-import koh.protocol.client.MessageTransaction;
+import koh.protocol.client.*;
+import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.protocol.client.enums.IdentificationFailureReason;
 import koh.protocol.client.enums.ServerStatusEnum;
 import koh.protocol.client.types.GameServerInformations;
@@ -39,6 +37,31 @@ import java.util.ArrayList;
 @RequireContexts(@Ctx(RealmContexts.InWaitingQueue.class))
 public class WaitingHandler implements Handler, EventListener {
 
+    private final PregenMessage wrongCredentialsMessage;
+    private final PregenMessage bannedMessage;
+    private final PregenMessage alreadyConnectedMessage;
+    private final PregenMessage maintenanceMessage;
+    private final PregenMessage endQueueMessage;
+
+    @Inject
+    public WaitingHandler(Dofus2ProtocolEncoder encoder) {
+        this.wrongCredentialsMessage = new PregenMessage(
+                encoder.encodeMessage(new IdentificationFailedMessage(IdentificationFailureReason.WRONG_CREDENTIALS), IoBuffer.allocate(16))
+        );
+        this.bannedMessage = new PregenMessage(
+                encoder.encodeMessage(new IdentificationFailedMessage(IdentificationFailureReason.BANNED), IoBuffer.allocate(16))
+        );
+        this.alreadyConnectedMessage = new PregenMessage(
+                encoder.encodeMessage(new IdentificationFailedMessage(IdentificationFailureReason.TOO_MANY_ON_IP), IoBuffer.allocate(16))
+        );
+        this.maintenanceMessage = new PregenMessage(
+                encoder.encodeMessage(new IdentificationFailedMessage(IdentificationFailureReason.IN_MAINTENANCE), IoBuffer.allocate(16))
+        );
+        this.endQueueMessage = new PregenMessage(
+                encoder.encodeMessage(new LoginQueueStatusMessage((short)0, (short)0), IoBuffer.allocate(16))
+        );
+    }
+
     private @Inject @RealmPackage EventExecutor eventsEmitter;
     private @Inject AccountDAO accountDAO;
     private @Inject GameServerDAO serverDAO;
@@ -53,17 +76,11 @@ public class WaitingHandler implements Handler, EventListener {
             event.getTarget().write(new LoginQueueStatusMessage((short)startPos, (short)queue.size()));
     }
 
-    private final WaitingQueue<RealmClient> queue = new WaitingQueue<>(20, 5000, this::treatWaiting, this::signalProgress);
-
-    private static final Message wrongCredentialsMessage = new IdentificationFailedMessage(IdentificationFailureReason.WRONG_CREDENTIALS);
-    private static final Message bannedMessage = new IdentificationFailedMessage(IdentificationFailureReason.BANNED);
-    private static final Message alreadyConnectedMessage = new IdentificationFailedMessage(IdentificationFailureReason.TOO_MANY_ON_IP);
-    private static final Message maintenanceMessage = new IdentificationFailedMessage(IdentificationFailureReason.IN_MAINTENANCE);
-
-    private static final Message endQueueMessage = new LoginQueueStatusMessage((short)0, (short)0);
+    private final WaitingQueue<RealmClient> queue = new WaitingQueue<>(50, 5000, this::treatWaiting, this::signalProgress);
 
     private void signalProgress(RealmClient client, int position, int total) {
-        eventsEmitter.fire(new ProgressChangedEvent(client, position, total));
+        if(position > 1)
+            eventsEmitter.fire(new ProgressChangedEvent(client, position, total));
     }
 
     @Listen
