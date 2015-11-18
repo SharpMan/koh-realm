@@ -19,6 +19,8 @@ public class Main {
 
     public static int MIN_TIMEOUT = 30;
     private static boolean running;
+
+
     public static final String binaryKey = "key.dat";
     public static final String salt = "hk2zaar9desn'@CD\"G84vF&zEK\")DT!U";
     public static final String bypassPacket = "StumpPatch.swf";

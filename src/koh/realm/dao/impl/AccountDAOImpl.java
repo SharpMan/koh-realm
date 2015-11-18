@@ -1,6 +1,7 @@
 package koh.realm.dao.impl;
 
 import com.google.inject.Inject;
+import koh.patterns.services.api.ServiceDependency;
 import koh.realm.app.DatabaseSource;
 import koh.realm.dao.api.AccountDAO;
 import koh.realm.entities.Account;
@@ -24,12 +25,12 @@ public class AccountDAOImpl extends AccountDAO {
 
     private final DatabaseSource dbSource;
 
-    private final int RECYCLE_MINS = 60;
+    private static final int RECYCLE_MINS = 60;
 
     private final BiRecyclingRepository<Integer, String, Account> accounts;
 
     @Inject
-    public AccountDAOImpl(DatabaseSource dbSource) {
+    public AccountDAOImpl(@ServiceDependency("RealmServices") DatabaseSource dbSource) {
         this.dbSource = dbSource;
 
         this.accounts = new BiRecyclingRepository<>((acc) -> acc.ID, (acc) -> acc.Username,
@@ -67,7 +68,7 @@ public class AccountDAOImpl extends AccountDAO {
     private final static String QUERY_BY_USERNAME = "SELECT account.id,account.username,account.sha_pass_hash,account.password,account.nickname,account.rights,account.secret_question,account.secret_answer,account.last_ip,account.suspended_time,account.last_login, " +
             "GROUP_CONCAT(worlds_characters.server SEPARATOR ',') AS servers, " +
             "GROUP_CONCAT(worlds_characters.number SEPARATOR ',') AS players " +
-            "FROM ACCOUNT " +
+            "FROM account " +
             "LEFT JOIN worlds_characters on account.id = worlds_characters.owner " +
             "WHERE account.username = ?;";
 
@@ -76,10 +77,13 @@ public class AccountDAOImpl extends AccountDAO {
 
             PreparedStatement stmt = conn.getStatement();
             stmt.setString(1, Username);
+
             ResultSet RS = stmt.executeQuery();
 
-            if(!RS.first() || RS.getString("username") == null)
+
+            if(!RS.first() || RS.getString("username") == null) {
                 throw new NullPointerException();
+            }
 
             return new Account() {
                 {
@@ -106,7 +110,10 @@ public class AccountDAOImpl extends AccountDAO {
                     }
                 }
             };
+        }catch(NullPointerException e) {
+            throw new NullPointerException();
         } catch (Exception e) {
+            System.out.println(e.getMessage());
             //TODO propagate Errors
             e.printStackTrace();
             //Main.Logs().writeInfo("Connexion a la DB Perdue, deconnexion du compte en connexion en attendant la reconnexion de la DB...");
@@ -122,7 +129,7 @@ public class AccountDAOImpl extends AccountDAO {
     private final static String QUERY_BY_ID = "SELECT account.id,account.username,account.sha_pass_hash,account.password,account.nickname,account.rights,account.secret_question,account.secret_answer,account.last_ip,account.suspended_time,account.last_login, " +
             "GROUP_CONCAT(worlds_characters.server SEPARATOR ',') AS servers, " +
             "GROUP_CONCAT(worlds_characters.number SEPARATOR ',') AS players " +
-            "FROM ACCOUNT " +
+            "FROM account " +
             "LEFT JOIN worlds_characters on account.id = worlds_characters.owner " +
             "WHERE account.id = ?;";
 
@@ -133,7 +140,7 @@ public class AccountDAOImpl extends AccountDAO {
             stmt.setInt(1, id);
             ResultSet RS = stmt.executeQuery();
 
-            if(!RS.first() || RS.getString("username") == null)
+            if (!RS.first() || RS.getString("username") == null)
                 throw new NullPointerException();
 
             return new Account() {
@@ -146,7 +153,8 @@ public class AccountDAOImpl extends AccountDAO {
                     Right = RS.getByte("rights");
                     SecretQuestion = RS.getString("secret_question");
                     SecretAnswer = RS.getString("secret_answer");
-                    LastIP = RS.getString("last_ip");;
+                    LastIP = RS.getString("last_ip");
+                    ;
                     try {
                         last_login = RS.getTimestamp("last_login");
                     } catch (Exception e) {
@@ -161,6 +169,8 @@ public class AccountDAOImpl extends AccountDAO {
                     }
                 }
             };
+        }catch(NullPointerException e) {
+            throw new NullPointerException();
         } catch (Exception e) {
             //TODO propagate Errors
             e.printStackTrace();

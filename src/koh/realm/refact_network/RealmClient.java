@@ -1,6 +1,5 @@
 package koh.realm.refact_network;
 
-import com.google.inject.Inject;
 import koh.mina.api.MinaClient;
 import koh.patterns.event.Event;
 import koh.patterns.event.EventExecutor;
@@ -14,23 +13,25 @@ import org.apache.mina.core.session.IoSession;
 
 public class RealmClient extends MinaClient {
 
-    public RealmClient(IoSession session) {
+    private final EventExecutor eventsEmitter;
+
+    public RealmClient(IoSession session, EventExecutor eventsEmitter) {
         super(session, RealmContexts.AUTHENTICATING);
+        this.eventsEmitter = eventsEmitter;
     }
 
     public MessageTransaction startTransaction() {
         return new MessageTransaction(session);
     }
 
-    private static @Inject @RealmPackage EventExecutor eventsEmitter;
-
     @Override
     public void setHandlerContext(Context context) {
         Event<RealmClient> toFire = new ClientContextChangedEvent(this, this.getHandlerContext(), context);
         try {
             super.setHandlerContext(context);
-        }finally {
+        } finally {
             eventsEmitter.fire(toFire);
+            System.out.println("Client state changed : " + context.getClass().getSimpleName());
         }
     }
 
@@ -55,7 +56,7 @@ public class RealmClient extends MinaClient {
     }
 
     @Override
-    public synchronized CloseFuture disconnect(boolean waitPendingMessages) {
+    public CloseFuture disconnect(boolean waitPendingMessages) {
         CloseFuture closing = super.disconnect(waitPendingMessages);
 
         this.authenticationToken = null;

@@ -16,11 +16,17 @@ import koh.protocol.messages.connection.BypassIdentificationMessage;
 import koh.protocol.messages.connection.HelloConnectMessage;
 import koh.protocol.messages.connection.IdentificationMessage;
 import koh.protocol.messages.handshake.ProtocolRequired;
+import koh.protocol.messages.security.RawDataMessage;
+import koh.realm.Main;
 import koh.realm.entities.GameServer;
 import koh.realm.inter.annotations.InterPackage;
 import koh.realm.refact_network.RealmClient;
 import koh.realm.refact_network.RealmPackage;
+import koh.realm.utils.Settings;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 
 public class ExecutorsModule extends AbstractModule {
@@ -70,10 +76,11 @@ public class ExecutorsModule extends AbstractModule {
     @Provides   @Named("Dofus2MessagesDictionary")
     @Singleton
     HashMap<Integer, Class<? extends Message>> provideDofus2Messages() {
+        //TODO : Pre-gen java file with auto-generated HashMap<messageId, Class<? extends Message> with reflection before runtime
         return new HashMap<Integer, Class<? extends Message>>(){{
             put(HelloConnectMessage.MESSAGE_ID, HelloConnectMessage.class);
-            put(ProtocolRequired.MESSAGE_ID, ProtocolRequired.class);
-            put(BypassIdentificationMessage.MESSAGE_ID, BypassIdentificationMessage.class);
+            //put(ProtocolRequired.MESSAGE_ID, ProtocolRequired.class);
+            //put(BypassIdentificationMessage.MESSAGE_ID, BypassIdentificationMessage.class);
             put(IdentificationMessage.MESSAGE_ID, IdentificationMessage.class);
         }};
     }
@@ -83,6 +90,18 @@ public class ExecutorsModule extends AbstractModule {
     Dofus2ProtocolDecoder provideDofus2Decoder(
             @Named("Dofus2MessagesDictionary") HashMap<Integer, Class<? extends Message>> messages ) {
         return new Dofus2ProtocolDecoder(messages);
+    }
+
+    @Provides @Singleton @Named("Messages.ProtocolRequired")
+    private ProtocolRequired provideProtocolRequiredMessage(Settings settings) {
+        return new ProtocolRequired(settings.getIntElement("Protocol.requiredVersion"),
+                settings.getIntElement("Protocol.currentVersion"));
+    }
+
+    @Provides @Singleton @Named("Messages.AuthenticationBypasser")
+    private RawDataMessage provideBypassPacketMessage(Settings settings) throws IOException {
+        byte[] binaryFile = Files.readAllBytes(Paths.get(settings.getStringElement("Login.BypassPacket")));
+        return new RawDataMessage((short)binaryFile.length, binaryFile);
     }
 
     @Provides

@@ -1,6 +1,7 @@
 package koh.realm.dao.impl;
 
 import com.google.inject.Inject;
+import koh.patterns.services.api.ServiceDependency;
 import koh.realm.app.DatabaseSource;
 import koh.realm.dao.api.CharacterDAO;
 import koh.realm.utils.sql.ConnectionStatement;
@@ -16,7 +17,7 @@ public class CharacterDAOImpl extends CharacterDAO {
     private final DatabaseSource dbSource;
 
     @Inject
-    public CharacterDAOImpl(DatabaseSource dbSource) {
+    public CharacterDAOImpl(@ServiceDependency("RealmServices") DatabaseSource dbSource) {
         this.dbSource = dbSource;
     }
 

@@ -3,6 +3,7 @@ package koh.realm.app;
 import com.google.inject.Binder;
 import com.google.inject.Inject;
 import com.google.inject.Scopes;
+import com.google.inject.Singleton;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import koh.patterns.services.api.DependsOn;
@@ -27,7 +28,7 @@ import java.sql.Statement;
  * @author Neo-Craft
  */
 
-@DependsOn({Logs.class})
+@DependsOn({Logs.class, MemoryService.class})
 public class DatabaseSource implements Service {
 
     private final HikariConfig config;
@@ -86,8 +87,7 @@ public class DatabaseSource implements Service {
     public void start() {
         if(dataSource != null && !dataSource.isClosed())
             dataSource.close();
-        System.out.println("DAMN");
-        //this.dataSource = new HikariDataSource(config);
+        this.dataSource = new HikariDataSource(config);
     }
 
     @Override

@@ -38,6 +38,7 @@ public class AuthenticatedHandler implements Handler, EventListener {
 
     @InactiveTimeout
     public void onInactivityTimeout(RealmClient client) {
+        System.out.println("Client timed out : " + client.getRemoteAddress());
         client.disconnect(timeOutMessage);
     }
 
@@ -85,6 +86,7 @@ public class AuthenticatedHandler implements Handler, EventListener {
 
     @Disconnect
     public void onDisconnect(RealmClient client) {
+        System.out.println("Client disconnected : " + client.getRemoteAddress());
         client.disconnect(false);
     }
 }

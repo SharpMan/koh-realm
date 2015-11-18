@@ -12,6 +12,7 @@ import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
 import koh.protocol.client.BufUtils;
 import koh.protocol.client.Message;
+import koh.protocol.client.MessageQueue;
 import koh.protocol.client.MessageTransaction;
 import koh.protocol.client.enums.IdentificationFailureReason;
 import koh.protocol.client.enums.ServerStatusEnum;
@@ -39,8 +40,8 @@ import java.util.ArrayList;
 public class WaitingHandler implements Handler, EventListener {
 
     private @Inject @RealmPackage EventExecutor eventsEmitter;
-    @Inject AccountDAO accountDAO;
-    @Inject GameServerDAO serverDAO;
+    private @Inject AccountDAO accountDAO;
+    private @Inject GameServerDAO serverDAO;
 
     @Listen
     public void onContextChanged(ClientContextChangedEvent event) {
@@ -48,19 +49,21 @@ public class WaitingHandler implements Handler, EventListener {
             return;
 
         int startPos = queue.push(event.getTarget());
-        event.getTarget().write(new LoginQueueStatusMessage((short)startPos, (short)queue.size()));
+        if(startPos > 1)
+            event.getTarget().write(new LoginQueueStatusMessage((short)startPos, (short)queue.size()));
     }
 
-    private final WaitingQueue<RealmClient> queue = new WaitingQueue<>(100, 5000, this::treatWaiting, this::signalProgress);
+    private final WaitingQueue<RealmClient> queue = new WaitingQueue<>(20, 5000, this::treatWaiting, this::signalProgress);
 
     private static final Message wrongCredentialsMessage = new IdentificationFailedMessage(IdentificationFailureReason.WRONG_CREDENTIALS);
     private static final Message bannedMessage = new IdentificationFailedMessage(IdentificationFailureReason.BANNED);
     private static final Message alreadyConnectedMessage = new IdentificationFailedMessage(IdentificationFailureReason.TOO_MANY_ON_IP);
+    private static final Message maintenanceMessage = new IdentificationFailedMessage(IdentificationFailureReason.IN_MAINTENANCE);
 
     private static final Message endQueueMessage = new LoginQueueStatusMessage((short)0, (short)0);
 
-    private void signalProgress(int position, RealmClient client) {
-        eventsEmitter.fire(new ProgressChangedEvent(client, position));
+    private void signalProgress(RealmClient client, int position, int total) {
+        eventsEmitter.fire(new ProgressChangedEvent(client, position, total));
     }
 
     @Listen
@@ -68,16 +71,20 @@ public class WaitingHandler implements Handler, EventListener {
         if(event.getTarget().getAuthenticationToken() == null)
             return;
 
-        event.getTarget().write(new LoginQueueStatusMessage((short)event.position, (short)queue.size()));
+        event.getTarget().write(new LoginQueueStatusMessage((short)event.position, (short)event.total));
     }
 
     private void treatWaiting(RealmClient client) {
-        if(client.getAuthenticationToken() == null)
+        if(client.disconnecting() || client.getAuthenticationToken() == null)
             return;
 
         AuthenticationToken token = client.getAuthenticationToken();
         client.setAuthenticationToken(null);
-        client.write(endQueueMessage);
+
+        if(serverDAO.getGameServers().size() == 0) {
+            client.disconnect(maintenanceMessage);
+            return;
+        }
 
         String login;
         String password;
@@ -89,28 +96,39 @@ public class WaitingHandler implements Handler, EventListener {
 
         RepositoryReference<Account> loadedAccount = accountDAO.getCompteByName(login);
 
+        if(loadedAccount == null) {
+            client.disconnect(new MessageQueue(endQueueMessage, wrongCredentialsMessage));
+            return;
+        }
+
         try {
             loadedAccount.sync(() -> {
 
                 if(!loadedAccount.get().isValidPass(password)) {
-                    throw new LambdaException(() -> client.disconnect(wrongCredentialsMessage));
+                    throw new LambdaException(() -> client.disconnect(
+                            new MessageQueue(endQueueMessage, wrongCredentialsMessage)
+                    ));
                 }
 
                 if(loadedAccount.get().client != null) {
                     if(loadedAccount.get().isBanned()) {
                         throw new LambdaException(() -> {
                             client.disconnect(bannedMessage);
-                            loadedAccount.get().getClient().disconnect(bannedMessage);
+                            loadedAccount.get().getClient().disconnect(
+                                    new MessageQueue(endQueueMessage, bannedMessage)
+                            );
                         });
                     }
                     throw new LambdaException(() -> {
-                        client.disconnect(alreadyConnectedMessage);
+                        client.disconnect(new MessageQueue(endQueueMessage, alreadyConnectedMessage));
                         loadedAccount.get().getClient().disconnect();
                     });
                 }
 
                 if(loadedAccount.get().isBanned()) {
-                    throw new LambdaException(() -> client.disconnect(bannedMessage));
+                    throw new LambdaException(() -> client.disconnect(
+                            new MessageQueue(endQueueMessage, bannedMessage)
+                    ));
                 }
 
                 loadedAccount.get().setClient(client);
@@ -126,6 +144,8 @@ public class WaitingHandler implements Handler, EventListener {
 
         client.setHandlerContext(RealmContexts.AUTHENTICATED);
         try(MessageTransaction trans = client.startTransaction()) {
+            trans.write(endQueueMessage);
+
             trans.write(new IdentificationSuccessMessage(acc.Username, acc.NickName, acc.ID,
                     /*Community*/ 0, acc.Right > 0, acc.SecretQuestion,
                     Instant.now().getEpochSecond() * 1000, false));
@@ -142,6 +162,7 @@ public class WaitingHandler implements Handler, EventListener {
 
     @Disconnect
     public void onDisconnect(RealmClient client) {
+        System.out.println("Client disconnected : " + client.getRemoteAddress());
         queue.remove(client);
         client.disconnect(false);
     }

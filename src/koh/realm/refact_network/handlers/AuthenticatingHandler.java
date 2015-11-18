@@ -13,6 +13,8 @@ import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
 import koh.protocol.client.Message;
 import koh.protocol.client.MessageTransaction;
+import koh.protocol.client.PregenMessage;
+import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.protocol.client.enums.IdentificationFailureReason;
 import koh.protocol.messages.connection.CredentialsAcknowledgementMessage;
 import koh.protocol.messages.connection.IdentificationFailedMessage;
@@ -24,31 +26,30 @@ import koh.realm.refact_network.RealmClient;
 import koh.realm.refact_network.RealmContexts;
 import koh.realm.utils.Settings;
 import koh.utils.LambdaCloseable;
+import org.apache.mina.core.buffer.IoBuffer;
 
 @RequireContexts(@Ctx(RealmContexts.Authenticating.class))
 public class AuthenticatingHandler implements Handler, EventListener {
 
-    @Inject Settings settings;
+    private final PregenMessage welcomeMessageBuffer;
 
-    @Inject @Named("Messages.AuthenticationBypasser")
-    RawDataMessage authenticationBypasser;
-    @Inject @Named("Messages.ProtocolRequired")
-    ProtocolRequired protocolRequiredMessage;
+    @Inject
+    public AuthenticatingHandler(@Named("Messages.AuthenticationBypasser") RawDataMessage authenticationBypasser,
+                                 @Named("Messages.ProtocolRequired") ProtocolRequired protocolRequiredMessage,
+                                 Dofus2ProtocolEncoder encoder) {
 
-    /*
-        TODO pregen messages (AuthenticationBypasser / ProtocolRequired)
-      transact.write(new ProtocolRequired(settings.getIntElement("Protocol.requiredVersion"),
-     settings.getIntElement("Protocol.currentVersion")));
+        IoBuffer msgBuffer = IoBuffer.allocate(authenticationBypasser.getContent().length + 16);
 
-     */
+        encoder.encodeMessage(authenticationBypasser, msgBuffer);
+        encoder.encodeMessage(protocolRequiredMessage, msgBuffer);
+
+        this.welcomeMessageBuffer = new PregenMessage(msgBuffer.flip().asReadOnlyBuffer());
+    }
 
     @Connect
     public void onConnect(RealmClient client) {
-        System.out.println("New client : " + client.getRemoteAddress() + " => " + client.getLocalAddress());
-        try(MessageTransaction transact = client.startTransaction()) {
-            transact.write(protocolRequiredMessage);
-            transact.write(authenticationBypasser);
-        }
+        System.out.println("Client connected : " + client.getRemoteAddress());
+        client.write(welcomeMessageBuffer);
     }
 
     private final static Message credentialsAck = new CredentialsAcknowledgementMessage();
@@ -58,6 +59,11 @@ public class AuthenticatingHandler implements Handler, EventListener {
         client.setAuthenticationToken(new AuthenticationToken(message));
         client.setHandlerContext(RealmContexts.IN_WAITING_QUEUE);
         client.write(credentialsAck);
+    }
+
+    @Disconnect
+    public void onDisconnect(RealmClient client) {
+        System.out.println("Client disconnected : " + client.getRemoteAddress());
     }
 
 }

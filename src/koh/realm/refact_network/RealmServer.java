@@ -21,6 +21,7 @@ import koh.realm.app.DatabaseSource;
 import koh.realm.app.Logs;
 import koh.realm.inter.InterServer;
 import koh.realm.utils.Settings;
+import org.apache.mina.core.session.IoSession;
 
 import java.io.IOException;
 
@@ -40,26 +41,31 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
     private final MinaServer<RealmClient, Message> minaServer;
     private final Settings settings;
 
-    @Inject @RealmPackage
-    private ConsumerHandlerExecutor<RealmClient, Message> realmMessagesExecutor;
-    @Inject @RealmPackage
-    private SimpleHandlerExecutor<RealmClient> realmActionsExecutor;
-    @Inject @RealmPackage
-    private EventExecutor realmEventsExecutor;
+    private final ConsumerHandlerExecutor<RealmClient, Message> messagesExecutor;
+    private final SimpleHandlerExecutor<RealmClient> actionsExecutor;
+    private final EventExecutor eventsExecutor;
 
     @Inject
     public RealmServer(Settings settings, Logs logs,
-                       @RealmPackage ConsumerHandlerExecutor<RealmClient, Message> messages,
-                       @RealmPackage EventExecutor events,
-                       @RealmPackage SimpleHandlerExecutor<RealmClient> actions,
+                       @RealmPackage ConsumerHandlerExecutor<RealmClient, Message> messagesExecutor,
+                       @RealmPackage EventExecutor eventsExecutor,
+                       @RealmPackage SimpleHandlerExecutor<RealmClient> actionsExecutor,
                        Dofus2ProtocolDecoder decoder,
                        Dofus2ProtocolEncoder encoder) {
 
-        this.settings = settings;
-        this.minaServer = new MinaServer<>(RealmClient::new, actions,
-                messages, this, Message.class);
+        this.messagesExecutor = messagesExecutor;
+        this.eventsExecutor = eventsExecutor;
+        this.actionsExecutor = actionsExecutor;
 
-        minaServer.configure(decoder, encoder, DEFAULT_READ_SIZE, MAX_READ_SIZE, 30 * 60);
+        this.settings = settings;
+        this.minaServer = new MinaServer<>(this::newClient, actionsExecutor,
+                messagesExecutor, this, Message.class);
+
+        minaServer.configure(decoder, encoder, DEFAULT_READ_SIZE, MAX_READ_SIZE, 30 * 60, false);
+    }
+
+    private RealmClient newClient(IoSession session) {
+        return new RealmClient(session, eventsExecutor);
     }
 
     @Override
@@ -81,6 +87,8 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
     @Override
     public void onException(RealmClient client, Throwable exception) {
         exception.printStackTrace();
+        System.out.println(exception.getMessage());
+        System.out.println("Error : " + exception.getCause().getMessage());
     }
 
     @Override
@@ -89,18 +97,15 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
     }
 
     @Override
-    public void configure(Binder binder) {
-    }
-
     public void inject(Injector injector) {
         injector.createChildInjector(
-                new ConsumerHandlingProvider<>(realmMessagesExecutor, injector,
+                new ConsumerHandlingProvider<>(messagesExecutor, injector,
                         "koh.realm.refact_network.handlers", RealmClient.class, Receive.class, Message.class),
 
-                new SimpleHandlingProvider<>(realmActionsExecutor, injector,
+                new SimpleHandlingProvider<>(actionsExecutor, injector,
                         "koh.realm.refact_network.handlers", RealmClient.class),
 
-                new EventListeningProvider(realmEventsExecutor, injector, "koh.realm.refact_network.handlers")
+                new EventListeningProvider(eventsExecutor, injector, "koh.realm.refact_network.handlers")
         );
     }
 }

@@ -1,6 +1,7 @@
 package koh.realm.dao.impl;
 
 import com.google.inject.Inject;
+import koh.patterns.services.api.ServiceDependency;
 import koh.realm.app.DatabaseSource;
 import koh.realm.app.Logs;
 import koh.realm.dao.api.GameServerDAO;
@@ -23,7 +24,7 @@ public class GameServerDAOImpl extends GameServerDAO {
     private final DatabaseSource dbSource;
 
     @Inject
-    public GameServerDAOImpl(DatabaseSource dbSource, Logs logs) {
+    public GameServerDAOImpl(@ServiceDependency("RealmServices") DatabaseSource dbSource, Logs logs) {
         this.dbSource = dbSource;
 
         //logs.writeInfo(this.loadAll() + " WorldServers loaded ");
