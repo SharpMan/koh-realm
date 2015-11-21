@@ -1,4 +1,4 @@
-package koh.realm.inter.annotations;
+package koh.realm.intranet;
 
 import com.google.inject.BindingAnnotation;
 

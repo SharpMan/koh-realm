@@ -1,4 +1,4 @@
-package koh.realm.refact_network;
+package koh.realm.internet;
 
 import com.google.inject.BindingAnnotation;
 

@@ -1,7 +1,7 @@
-package koh.realm.refact_network.events;
+package koh.realm.internet.events;
 
 import koh.patterns.event.Event;
-import koh.realm.refact_network.RealmClient;
+import koh.realm.internet.RealmClient;
 
 public class ProgressChangedEvent extends Event<RealmClient> {
 

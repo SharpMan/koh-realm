@@ -1,13 +1,12 @@
-package koh.realm.refact_network.handlers;
+package koh.realm.internet.handlers;
 
 import com.google.inject.Inject;
 import koh.concurrency.LambdaException;
 import koh.concurrency.WaitingQueue;
 import koh.mina.api.annotations.Disconnect;
+import koh.patterns.Controller;
 import koh.patterns.event.EventExecutor;
-import koh.patterns.event.api.EventListener;
 import koh.patterns.event.api.Listen;
-import koh.patterns.handler.api.Handler;
 import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
 import koh.protocol.client.*;
@@ -22,12 +21,12 @@ import koh.protocol.messages.connection.ServersListMessage;
 import koh.realm.dao.api.AccountDAO;
 import koh.realm.dao.api.GameServerDAO;
 import koh.realm.entities.Account;
-import koh.realm.refact_network.AuthenticationToken;
-import koh.realm.refact_network.RealmClient;
-import koh.realm.refact_network.RealmContexts;
-import koh.realm.refact_network.RealmPackage;
-import koh.realm.refact_network.events.ClientContextChangedEvent;
-import koh.realm.refact_network.events.ProgressChangedEvent;
+import koh.realm.internet.AuthenticationToken;
+import koh.realm.internet.RealmClient;
+import koh.realm.internet.RealmContexts;
+import koh.realm.internet.RealmPackage;
+import koh.realm.internet.events.ClientContextChangedEvent;
+import koh.realm.internet.events.ProgressChangedEvent;
 import koh.repositories.RepositoryReference;
 import org.apache.mina.core.buffer.IoBuffer;
 
@@ -35,7 +34,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 
 @RequireContexts(@Ctx(RealmContexts.InWaitingQueue.class))
-public class WaitingHandler implements Handler, EventListener {
+public class WaitingHandler implements Controller {
 
     private final PregenMessage wrongCredentialsMessage;
     private final PregenMessage bannedMessage;
@@ -149,6 +148,7 @@ public class WaitingHandler implements Handler, EventListener {
 
                 loadedAccount.get().setClient(client);
                 client.setAccount(loadedAccount);
+                accountDAO.save(loadedAccount.get());
 
             });
         } catch(LambdaException exception) {
@@ -159,7 +159,8 @@ public class WaitingHandler implements Handler, EventListener {
         Account acc = loadedAccount.get();
 
         client.setHandlerContext(RealmContexts.AUTHENTICATED);
-        try(MessageTransaction trans = client.startTransaction()) {
+
+        client.transact((trans) -> {
             trans.write(endQueueMessage);
 
             trans.write(new IdentificationSuccessMessage(acc.Username, acc.NickName, acc.ID,
@@ -168,12 +169,12 @@ public class WaitingHandler implements Handler, EventListener {
 
             trans.write(new ServersListMessage(new ArrayList<GameServerInformations>() {{
                 serverDAO.getGameServers().stream().forEach((server) -> add(new GameServerInformations(
-                        server.ID, server.State,
-                        (byte) (server.State == ServerStatusEnum.FULL ? 1 : 0),
+                        server.ID, server.getStatus(),
+                        (byte) (server.getStatus() == ServerStatusEnum.FULL ? 1 : 0),
                         true, acc.getPlayers(server.ID), 0))
                 );
             }}));
-        }
+        });
     }
 
     @Disconnect

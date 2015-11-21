@@ -5,8 +5,10 @@ import koh.patterns.services.ServicesProvider;
 import koh.realm.app.AppModule;
 import koh.realm.app.DatabaseSource;
 import koh.realm.app.Logs;
-import koh.realm.inter.InterServer;
-import koh.realm.refact_network.RealmServer;
+import koh.realm.app.MemoryService;
+import koh.realm.intranet.InterServer;
+import koh.realm.internet.RealmServer;
+import org.reflections.Reflections;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,29 +19,13 @@ import java.util.List;
  */
 public class Main {
 
-    public static int MIN_TIMEOUT = 30;
-    private static boolean running;
-
-
-    public static final String binaryKey = "key.dat";
-    public static final String salt = "hk2zaar9desn'@CD\"G84vF&zEK\")DT!U";
-    public static final String bypassPacket = "StumpPatch.swf";
-
-
-    private static final List<Runnable> runnableList = new ArrayList<>();
-
-    public static void onShutdown(Runnable runnable) {
-        runnableList.add(runnable);
-    }
-
     public static void main(String[] args) {
         try {
-            registerShutdownHooks();
-
             long time = System.currentTimeMillis();
 
             AppModule app = new AppModule();
             ServicesProvider services = app.create(
+                    MemoryService.class,
                     DatabaseSource.class,
                     Logs.class,
                     RealmServer.class,
@@ -48,8 +34,6 @@ public class Main {
 
             services.start();
 
-            running = true;
-
             app.resolver().getInstance(Key.get(Logs.class, ServicesProvider.inGroup("RealmServices")))
                     .writeInfo("RealmServer start in " + (System.currentTimeMillis() - time) + " ms.");
 
@@ -57,27 +41,6 @@ public class Main {
             System.out.println(e.getMessage());
             e.printStackTrace();
         }
-    }
-
-    public static boolean isRunning() {
-        return running;
-    }
-
-    private static void registerShutdownHooks() {
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-
-            @Override
-            public void run() {
-                for(int i=runnableList.size()-1; i > 0; --i) {
-                    try {
-                        runnableList.get(i).run();
-                    }catch(Throwable tr) {
-                        tr.printStackTrace();
-                    }
-                }
-            }
-
-        });
     }
 
 }

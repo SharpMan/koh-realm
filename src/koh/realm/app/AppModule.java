@@ -15,12 +15,8 @@ public class AppModule extends AbstractModule {
 
     @SafeVarargs
     public final ServicesProvider create(Class<? extends Service>... services) {
-        AbstractModule core = new CoreModule(app);
-        app.injectMembers(core);
-
         ServicesProvider provider = new ServicesProvider("RealmServices", app, services);
-        app = app.createChildInjector(core, provider);
-
+        app = app.createChildInjector(provider);
         return provider;
     }
 
@@ -30,7 +26,7 @@ public class AppModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        install(new ExecutorsModule());
+        install(new CoreModule());
     }
 
     @Provides

@@ -5,7 +5,7 @@ import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
 
-import koh.realm.refact_network.RealmClient;
+import koh.realm.internet.RealmClient;
 import koh.repositories.InUseCheckable;
 
 /**

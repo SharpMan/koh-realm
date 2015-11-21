@@ -1,4 +1,4 @@
-package koh.realm.refact_network;
+package koh.realm.internet;
 
 import koh.mina.api.MinaClient;
 import koh.patterns.event.Event;
@@ -6,10 +6,12 @@ import koh.patterns.event.EventExecutor;
 import koh.patterns.handler.context.Context;
 import koh.protocol.client.MessageTransaction;
 import koh.realm.entities.Account;
-import koh.realm.refact_network.events.ClientContextChangedEvent;
+import koh.realm.internet.events.ClientContextChangedEvent;
 import koh.repositories.RepositoryReference;
 import org.apache.mina.core.future.CloseFuture;
 import org.apache.mina.core.session.IoSession;
+
+import java.util.function.Consumer;
 
 public class RealmClient extends MinaClient {
 
@@ -22,6 +24,12 @@ public class RealmClient extends MinaClient {
 
     public MessageTransaction startTransaction() {
         return new MessageTransaction(session);
+    }
+
+    public void transact(Consumer<MessageTransaction> transaction) {
+        try(MessageTransaction trans = this.startTransaction()) {
+            transaction.accept(trans);
+        }
     }
 
     @Override

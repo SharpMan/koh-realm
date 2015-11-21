@@ -1,9 +1,12 @@
 package koh.realm.app;
 
+import koh.patterns.services.api.DependsOn;
 import koh.patterns.services.api.Service;
+import org.reflections.Reflections;
 
 import java.io.*;
 import java.util.Calendar;
+import java.util.logging.Logger;
 
 /**
  *
@@ -12,13 +15,15 @@ import java.util.Calendar;
 
 public class Logs implements Service {
 
-    private PrintStream Log_Errors;
-    private BufferedWriter Log_Infos;
+    //private PrintStream Log_Errors;
+    //private BufferedWriter Log_Infos;
+    private final static Logger log = Logger.getLogger(Logs.class.getName());
     private String createdDate;
 
     private boolean DEBUG = true;
 
     public Logs() {
+        Reflections.log = null;
         this.createdDate = getDay();
     }
 
@@ -36,7 +41,7 @@ public class Logs implements Service {
         this.createdDate = getDay();
 
         checkFolders(createdDate);
-        try {
+        /*try {
             Log_Errors = new PrintStream(new File("logs/" + createdDate + "/errors.log"));
         } catch (FileNotFoundException ex) {
         }
@@ -49,7 +54,7 @@ public class Logs implements Service {
             Log_Infos = new BufferedWriter(tmpWriter);
         } catch (IOException e) {
             System.out.println(e.getMessage());
-        }
+        }*/
     }
 
     private static String getDay() {
@@ -57,7 +62,8 @@ public class Logs implements Service {
     }
 
     public synchronized void writeInfo(String toAdd) {
-        if (Log_Infos == null) {
+        log.info(toAdd);
+        /*if (Log_Infos == null) {
             return;
         }
 
@@ -83,11 +89,11 @@ public class Logs implements Service {
         }
         if (DEBUG) {
             System.out.println("[" + atTime + "] " + toAdd);
-        }
+        }*/
     }
 
     public synchronized void writeDebug(String toAdd) {
-        if (Log_Infos == null) {
+        /*if (Log_Infos == null) {
             return;
         }
 
@@ -106,11 +112,13 @@ public class Logs implements Service {
         String atTime = HOUR + ":" + MIN + ":" + SEC;
         if (DEBUG) {
             System.out.println("[" + atTime + "] " + toAdd);
-        }
+        }*/
+
+        log.warning(toAdd);
     }
 
     public synchronized void writeError(String toAdd) {
-        if (Log_Errors == null) {
+        /*if (Log_Errors == null) {
             return;
         }
 
@@ -132,11 +140,13 @@ public class Logs implements Service {
         Log_Errors.flush();
         if (DEBUG) {
             System.out.println("[ERROR : " + atTime + "] " + toAdd);
-        }
+        }*/
+
+        log.severe(toAdd);
     }
 
     public void close() {
-        try {
+        /*try {
             if (Log_Infos != null) {
                 Log_Infos.flush();
                 Log_Infos.close();
@@ -148,11 +158,12 @@ public class Logs implements Service {
                 Log_Errors = null;
             }
         } catch (IOException e) {
-        }
+        }*/
     }
 
     @Override
     public void start() {
+        log.info("Logs starting");
         initialize();
     }
 

@@ -1,11 +1,11 @@
-package koh.realm.refact_network;
+package koh.realm.internet;
 
-import com.google.inject.Binder;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 import koh.mina.MinaServer;
 import koh.mina.api.MinaListener;
 import koh.mina.api.annotations.Receive;
+import koh.patterns.ControllersBinder;
 import koh.patterns.event.EventExecutor;
 import koh.patterns.event.EventListeningProvider;
 import koh.patterns.handler.ConsumerHandlerExecutor;
@@ -19,7 +19,7 @@ import koh.protocol.client.codec.Dofus2ProtocolDecoder;
 import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.realm.app.DatabaseSource;
 import koh.realm.app.Logs;
-import koh.realm.inter.InterServer;
+import koh.realm.intranet.InterServer;
 import koh.realm.utils.Settings;
 import org.apache.mina.core.session.IoSession;
 
@@ -58,6 +58,8 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
         this.actionsExecutor = actionsExecutor;
 
         this.settings = settings;
+
+        //TODO set on CoreModule with @RealmPackage
         this.minaServer = new MinaServer<>(this::newClient, actionsExecutor,
                 messagesExecutor, this, Message.class);
 
@@ -95,16 +97,24 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
         System.out.println("Sent : " + message);
     }
 
+    private static final String HANDLERS_PACKAGE = "koh.realm.internet.handlers";
+
     @Override
     public void inject(Injector injector) {
+        injector = new ControllersBinder(injector, HANDLERS_PACKAGE).bind();
+
         injector.createChildInjector(
                 new ConsumerHandlingProvider<>(messagesExecutor, injector,
-                        "koh.realm.refact_network.handlers", RealmClient.class, Receive.class, Message.class),
+                        HANDLERS_PACKAGE, RealmClient.class, Receive.class, Message.class),
 
                 new SimpleHandlingProvider<>(actionsExecutor, injector,
-                        "koh.realm.refact_network.handlers", RealmClient.class),
+                        HANDLERS_PACKAGE, RealmClient.class),
 
-                new EventListeningProvider(eventsExecutor, injector, "koh.realm.refact_network.handlers")
+                new EventListeningProvider(eventsExecutor, injector, HANDLERS_PACKAGE)
         );
+    }
+
+    public MinaServer<RealmClient, Message> getMina() {
+        return minaServer;
     }
 }

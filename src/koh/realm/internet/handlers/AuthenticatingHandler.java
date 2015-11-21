@@ -1,37 +1,27 @@
-package koh.realm.refact_network.handlers;
+package koh.realm.internet.handlers;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import koh.concurrency.WaitingQueue;
 import koh.mina.api.annotations.Connect;
 import koh.mina.api.annotations.Disconnect;
-import koh.mina.api.annotations.InactiveTimeout;
 import koh.mina.api.annotations.Receive;
-import koh.patterns.event.api.EventListener;
-import koh.patterns.handler.api.Handler;
+import koh.patterns.Controller;
 import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
 import koh.protocol.client.Message;
-import koh.protocol.client.MessageTransaction;
 import koh.protocol.client.PregenMessage;
 import koh.protocol.client.codec.Dofus2ProtocolEncoder;
-import koh.protocol.client.enums.IdentificationFailureReason;
 import koh.protocol.messages.connection.CredentialsAcknowledgementMessage;
-import koh.protocol.messages.connection.IdentificationFailedMessage;
 import koh.protocol.messages.connection.IdentificationMessage;
 import koh.protocol.messages.handshake.ProtocolRequired;
 import koh.protocol.messages.security.RawDataMessage;
-import koh.realm.refact_network.AuthenticationToken;
-import koh.realm.refact_network.RealmClient;
-import koh.realm.refact_network.RealmContexts;
-import koh.realm.utils.Settings;
-import koh.utils.LambdaCloseable;
+import koh.realm.internet.AuthenticationToken;
+import koh.realm.internet.RealmClient;
+import koh.realm.internet.RealmContexts;
 import org.apache.mina.core.buffer.IoBuffer;
 
-import java.lang.management.ManagementFactory;
-
 @RequireContexts(@Ctx(RealmContexts.Authenticating.class))
-public class AuthenticatingHandler implements Handler, EventListener {
+public class AuthenticatingHandler implements Controller {
 
     private final PregenMessage welcomeMessageBuffer;
 
