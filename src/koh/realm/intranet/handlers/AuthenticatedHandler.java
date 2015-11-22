@@ -12,28 +12,21 @@ import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
 import koh.patterns.services.api.ServiceDependency;
 import koh.protocol.messages.connection.ServerStatusUpdateMessage;
+import koh.realm.dao.api.AccountDAO;
 import koh.realm.dao.api.CharacterDAO;
+import koh.realm.entities.Account;
 import koh.realm.intranet.GameServerClient;
 import koh.realm.intranet.InterServerContexts;
 import koh.realm.intranet.events.ServerStatusChangedEvent;
 import koh.realm.internet.RealmContexts;
 import koh.realm.internet.RealmServer;
+import koh.repositories.RepositoryReference;
 
 @RequireContexts(@Ctx(value = InterServerContexts.Authenticated.class))
 public class AuthenticatedHandler implements Controller {
 
     @Inject @ServiceDependency("RealmServices")
     private RealmServer realmServer;
-
-    @Receive
-    public void onExpulse(GameServerClient server, ExpulseAccountMessage message) throws Exception {
-
-    }
-
-    @Receive
-    public void onPlayerComing(GameServerClient server, PlayerComingMessage message) throws Exception {
-
-    }
 
     @Inject
     private CharacterDAO characterDAO;

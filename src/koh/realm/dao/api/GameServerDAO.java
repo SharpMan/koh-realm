@@ -5,6 +5,7 @@ import koh.realm.dao.impl.GameServerDAOImpl;
 import koh.realm.entities.GameServer;
 
 import java.util.Collection;
+import java.util.stream.Stream;
 
 public abstract class GameServerDAO implements DAO<Short, GameServer> {
 
@@ -12,8 +13,7 @@ public abstract class GameServerDAO implements DAO<Short, GameServer> {
 
     public abstract int loadAll();
 
-    //TODO(Alleos) : return Stream<GameServer>
-    public abstract Collection<GameServer> getGameServers();
+    public abstract Stream<GameServer> getGameServers();
 
     public abstract void addGameServer(GameServer server);
 }

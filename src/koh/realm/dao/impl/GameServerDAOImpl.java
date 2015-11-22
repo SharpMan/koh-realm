@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 /**
  *
@@ -59,19 +60,18 @@ public class GameServerDAOImpl extends GameServerDAO {
     @Override
     public GameServer getByHash(String hash) {
         for (GameServer a : gameServers.values())
-            if (a.Hash.equalsIgnoreCase(hash))
+            if (a.Hash.equals(hash))
                 return a;
         return null;
     }
 
     @Override
-    public Collection<GameServer> getGameServers() {
-        return gameServers.values();
+    public Stream<GameServer> getGameServers() {
+        return gameServers.values().stream();
     }
 
     @Override
     public void addGameServer(GameServer server) {
-        gameServers.remove(server.ID);
         gameServers.put(server.ID, server);
     }
 

@@ -40,12 +40,12 @@ public class AccountDAOImpl extends AccountDAO {
     }
 
     @Override
-    public RepositoryReference<Account> getCompte(int guid) {
+    public RepositoryReference<Account> getAccount(int guid) {
         return accounts.getReferenceByFirst(guid);
     }
 
     @Override
-    public RepositoryReference<Account> getCompteByName(String name) {
+    public RepositoryReference<Account> getAccount(String name) {
         return accounts.getReferenceBySecond(name);
     }
 
@@ -63,6 +63,11 @@ public class AccountDAOImpl extends AccountDAO {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public RepositoryReference<Account> getLoadedAccount(int guid) {
+        return accounts.getReferenceByFirst(guid);
     }
 
     private final static String QUERY_BY_USERNAME = "SELECT account.id,account.username,account.sha_pass_hash,account.password,account.nickname,account.rights,account.secret_question,account.secret_answer,account.last_ip,account.suspended_time,account.last_login, " +

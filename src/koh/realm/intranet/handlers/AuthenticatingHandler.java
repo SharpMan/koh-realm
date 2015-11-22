@@ -34,15 +34,12 @@ public class AuthenticatingHandler implements Controller {
 
     @Receive
     public void authenticate(GameServerClient server, HelloMessage message) {
-        Optional<GameServer> found = serversDAO.getGameServers().stream()
-                .filter(x -> x.Hash.equals(message.authKey)).findFirst();
+        GameServer serverEntity = serversDAO.getByHash(message.authKey);
 
-        if(!found.isPresent()) {
+        if(serverEntity == null) {
             server.disconnect(false);
             return;
         }
-
-        GameServer serverEntity = found.get();
 
         serverEntity.setClient(server);
         server.setEntity(serverEntity);

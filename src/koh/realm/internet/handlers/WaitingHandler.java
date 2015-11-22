@@ -12,8 +12,6 @@ import koh.patterns.handler.context.RequireContexts;
 import koh.protocol.client.*;
 import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.protocol.client.enums.IdentificationFailureReason;
-import koh.protocol.client.enums.ServerStatusEnum;
-import koh.protocol.client.types.GameServerInformations;
 import koh.protocol.messages.connection.IdentificationFailedMessage;
 import koh.protocol.messages.connection.IdentificationSuccessMessage;
 import koh.protocol.messages.connection.LoginQueueStatusMessage;
@@ -25,7 +23,6 @@ import koh.realm.entities.GameServer;
 import koh.realm.internet.AuthenticationToken;
 import koh.realm.internet.RealmClient;
 import koh.realm.internet.RealmContexts;
-import koh.realm.internet.RealmPackage;
 import koh.realm.internet.events.ClientContextChangedEvent;
 import koh.realm.internet.events.ProgressChangedEvent;
 import koh.realm.intranet.events.ServerStatusChangedEvent;
@@ -34,9 +31,7 @@ import org.apache.mina.core.buffer.IoBuffer;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
-import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @RequireContexts(@Ctx(RealmContexts.InWaitingQueue.class))
 public class WaitingHandler implements Controller {
@@ -71,12 +66,9 @@ public class WaitingHandler implements Controller {
                 encoder.encodeMessage(new LoginQueueStatusMessage((short)0, (short)0), IoBuffer.allocate(16))
         );
         this.serversListMessage = new PregenMessage(
-                encoder.encodeMessage( new ServersListMessage(new ArrayList<GameServerInformations>() {{
-                            serverDAO.getGameServers().stream().forEach((server) -> add(server.toInformations()));
-                        }}),  IoBuffer.allocate(128)
-                )
+                encoder.encodeMessage(new ServersListMessage(serverDAO.getGameServers()
+                        .map(GameServer::toInformations).collect(Collectors.toList())),  IoBuffer.allocate(128))
         );
-        System.out.println(serversListMessage.get());
     }
 
     private @Inject EventExecutor eventsEmitter;
@@ -106,16 +98,6 @@ public class WaitingHandler implements Controller {
         event.getTarget().write(new LoginQueueStatusMessage((short)event.position, (short)event.total));
     }
 
-    private int countOnlineServers() {
-        int count = 0;
-        for(GameServer server : serverDAO.getGameServers())
-            if(server.getStatus() == ServerStatusEnum.ONLINE)
-                ++count;
-        //return count;
-
-        return 1;
-    }
-
     private void treatWaiting(RealmClient client) {
         if(client.disconnecting() || client.getAuthenticationToken() == null)
             return;
@@ -123,10 +105,10 @@ public class WaitingHandler implements Controller {
         AuthenticationToken token = client.getAuthenticationToken();
         client.setAuthenticationToken(null);
 
-        if(serverDAO.getGameServers().size() == 0 || countOnlineServers() == 0) {
+        /*if(serverDAO.getGameServers().size() == 0 || countOnlineServers() == 0) {
             client.disconnect(maintenanceMessage);
             return;
-        }
+        }*/
 
         String login;
         String password;
@@ -136,7 +118,7 @@ public class WaitingHandler implements Controller {
             password = BufUtils.readUTF(credentialsBuffer);
         }
 
-        RepositoryReference<Account> loadedAccount = accountDAO.getCompteByName(login);
+        RepositoryReference<Account> loadedAccount = accountDAO.getAccount(login);
 
         if(loadedAccount == null) {
             client.disconnect(new MessageQueue(endQueueMessage, wrongCredentialsMessage));
@@ -201,10 +183,8 @@ public class WaitingHandler implements Controller {
     private volatile PregenMessage serversListMessage;
     @Listen public void onStatusChanged(ServerStatusChangedEvent event) {
         this.serversListMessage = new PregenMessage(
-                encoder.encodeMessage( new ServersListMessage(new ArrayList<GameServerInformations>() {{
-                      serverDAO.getGameServers().stream().forEach((server) -> add(server.toInformations()));
-                }}),
-                IoBuffer.allocate(128))
+                encoder.encodeMessage(new ServersListMessage(serverDAO.getGameServers()
+                        .map(GameServer::toInformations).collect(Collectors.toList())),  IoBuffer.allocate(128))
         );
     }
 
