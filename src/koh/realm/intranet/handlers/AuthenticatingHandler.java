@@ -15,10 +15,12 @@ import koh.realm.intranet.GameServerClient;
 import koh.realm.intranet.InterPackage;
 import koh.realm.intranet.InterServerContexts;
 
+import java.util.Optional;
+
 @RequireContexts(@Ctx(value = InterServerContexts.Authenticating.class))
 public class AuthenticatingHandler implements Controller {
 
-    @Inject @InterPackage
+    @Inject
     private EventExecutor eventListening;
 
     @Inject
@@ -32,13 +34,15 @@ public class AuthenticatingHandler implements Controller {
 
     @Receive
     public void authenticate(GameServerClient server, HelloMessage message) {
-        GameServer serverEntity = serversDAO.getGameServers().stream()
-                .filter(x -> x.Hash.equals(message.authKey)).findFirst().get();
+        Optional<GameServer> found = serversDAO.getGameServers().stream()
+                .filter(x -> x.Hash.equals(message.authKey)).findFirst();
 
-        if(serverEntity == null) {
+        if(!found.isPresent()) {
             server.disconnect(false);
             return;
         }
+
+        GameServer serverEntity = found.get();
 
         serverEntity.setClient(server);
         server.setEntity(serverEntity);

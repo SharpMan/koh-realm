@@ -21,12 +21,14 @@ import koh.protocol.messages.connection.ServersListMessage;
 import koh.realm.dao.api.AccountDAO;
 import koh.realm.dao.api.GameServerDAO;
 import koh.realm.entities.Account;
+import koh.realm.entities.GameServer;
 import koh.realm.internet.AuthenticationToken;
 import koh.realm.internet.RealmClient;
 import koh.realm.internet.RealmContexts;
 import koh.realm.internet.RealmPackage;
 import koh.realm.internet.events.ClientContextChangedEvent;
 import koh.realm.internet.events.ProgressChangedEvent;
+import koh.realm.intranet.events.ServerStatusChangedEvent;
 import koh.repositories.RepositoryReference;
 import org.apache.mina.core.buffer.IoBuffer;
 
@@ -36,14 +38,21 @@ import java.util.ArrayList;
 @RequireContexts(@Ctx(RealmContexts.InWaitingQueue.class))
 public class WaitingHandler implements Controller {
 
+    private final Dofus2ProtocolEncoder encoder;
+
     private final PregenMessage wrongCredentialsMessage;
     private final PregenMessage bannedMessage;
     private final PregenMessage alreadyConnectedMessage;
     private final PregenMessage maintenanceMessage;
     private final PregenMessage endQueueMessage;
 
+    private final GameServerDAO serverDAO;
+
     @Inject
-    public WaitingHandler(Dofus2ProtocolEncoder encoder) {
+    public WaitingHandler(GameServerDAO serverDAO, Dofus2ProtocolEncoder encoder) {
+        this.encoder = encoder;
+        this.serverDAO = serverDAO;
+
         this.wrongCredentialsMessage = new PregenMessage(
                 encoder.encodeMessage(new IdentificationFailedMessage(IdentificationFailureReason.WRONG_CREDENTIALS), IoBuffer.allocate(16))
         );
@@ -59,11 +68,17 @@ public class WaitingHandler implements Controller {
         this.endQueueMessage = new PregenMessage(
                 encoder.encodeMessage(new LoginQueueStatusMessage((short)0, (short)0), IoBuffer.allocate(16))
         );
+        this.serversListMessage = new PregenMessage(
+                encoder.encodeMessage( new ServersListMessage(new ArrayList<GameServerInformations>() {{
+                            serverDAO.getGameServers().stream().forEach((server) -> add(server.toInformations()));
+                        }}),  IoBuffer.allocate(128)
+                )
+        );
+        System.out.println(serversListMessage.get());
     }
 
-    private @Inject @RealmPackage EventExecutor eventsEmitter;
+    private @Inject EventExecutor eventsEmitter;
     private @Inject AccountDAO accountDAO;
-    private @Inject GameServerDAO serverDAO;
 
     @Listen
     public void onContextChanged(ClientContextChangedEvent event) {
@@ -89,6 +104,16 @@ public class WaitingHandler implements Controller {
         event.getTarget().write(new LoginQueueStatusMessage((short)event.position, (short)event.total));
     }
 
+    private int countOnlineServers() {
+        int count = 0;
+        for(GameServer server : serverDAO.getGameServers())
+            if(server.getStatus() == ServerStatusEnum.ONLINE)
+                ++count;
+        //return count;
+
+        return 1;
+    }
+
     private void treatWaiting(RealmClient client) {
         if(client.disconnecting() || client.getAuthenticationToken() == null)
             return;
@@ -96,7 +121,7 @@ public class WaitingHandler implements Controller {
         AuthenticationToken token = client.getAuthenticationToken();
         client.setAuthenticationToken(null);
 
-        if(serverDAO.getGameServers().size() == 0) {
+        if(serverDAO.getGameServers().size() == 0 || countOnlineServers() == 0) {
             client.disconnect(maintenanceMessage);
             return;
         }
@@ -164,22 +189,25 @@ public class WaitingHandler implements Controller {
             trans.write(endQueueMessage);
 
             trans.write(new IdentificationSuccessMessage(acc.Username, acc.NickName, acc.ID,
-                    /*Community*/ 0, acc.Right > 0, acc.SecretQuestion,
-                    Instant.now().getEpochSecond() * 1000, false));
+                    /*Community*/ 0, acc.Right > 0, acc.SecretQuestion, Instant.now().toEpochMilli() + 3600 * 1000, false));
 
-            trans.write(new ServersListMessage(new ArrayList<GameServerInformations>() {{
-                serverDAO.getGameServers().stream().forEach((server) -> add(new GameServerInformations(
-                        server.ID, server.getStatus(),
-                        (byte) (server.getStatus() == ServerStatusEnum.FULL ? 1 : 0),
-                        true, acc.getPlayers(server.ID), 0))
-                );
-            }}));
+            trans.write(serversListMessage);
         });
+    }
+
+    private volatile PregenMessage serversListMessage;
+    @Listen public void onStatusChanged(ServerStatusChangedEvent event) {
+        this.serversListMessage = new PregenMessage(
+                encoder.encodeMessage( new ServersListMessage(new ArrayList<GameServerInformations>() {{
+                      serverDAO.getGameServers().stream().forEach((server) -> add(server.toInformations()));
+                }}),
+                IoBuffer.allocate(128))
+        );
     }
 
     @Disconnect
     public void onDisconnect(RealmClient client) {
-        System.out.println("Client disconnected : " + client.getRemoteAddress());
+        System.out.println("Client disconnected from WaitingHandler : " + client.getRemoteAddress());
         queue.remove(client);
         client.disconnect(false);
     }

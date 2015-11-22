@@ -22,6 +22,7 @@ import koh.realm.app.Logs;
 import koh.realm.intranet.InterServer;
 import koh.realm.utils.Settings;
 import org.apache.mina.core.session.IoSession;
+import org.apache.mina.core.write.WriteToClosedSessionException;
 
 import java.io.IOException;
 
@@ -48,7 +49,7 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
     @Inject
     public RealmServer(Settings settings, Logs logs,
                        @RealmPackage ConsumerHandlerExecutor<RealmClient, Message> messagesExecutor,
-                       @RealmPackage EventExecutor eventsExecutor,
+                       EventExecutor eventsExecutor,
                        @RealmPackage SimpleHandlerExecutor<RealmClient> actionsExecutor,
                        Dofus2ProtocolDecoder decoder,
                        Dofus2ProtocolEncoder encoder) {
@@ -88,6 +89,9 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
 
     @Override
     public void onException(RealmClient client, Throwable exception) {
+        if(exception instanceof WriteToClosedSessionException)
+            return; //ignore
+
         exception.printStackTrace();
         System.out.println(exception.getMessage());
     }

@@ -45,6 +45,8 @@ public class DatabaseSource implements Service {
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+
+        this.dataSource = new HikariDataSource(config);
     }
 
     public Connection getConnectionOfPool() throws SQLException {
@@ -85,9 +87,9 @@ public class DatabaseSource implements Service {
 
     @Override
     public void start() {
-        if(dataSource != null && !dataSource.isClosed())
+        /*if(dataSource != null && !dataSource.isClosed())
             dataSource.close();
-        this.dataSource = new HikariDataSource(config);
+        this.dataSource = new HikariDataSource(config);*/
     }
 
     @Override

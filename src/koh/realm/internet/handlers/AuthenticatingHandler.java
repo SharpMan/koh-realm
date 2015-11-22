@@ -55,7 +55,7 @@ public class AuthenticatingHandler implements Controller {
 
     @Disconnect
     public void onDisconnect(RealmClient client) {
-        System.out.println("Client disconnected : " + client.getRemoteAddress());
+        System.out.println("Client disconnected from AuthenticatingHandler : " + client.getRemoteAddress());
     }
 
 }

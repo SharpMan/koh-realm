@@ -37,7 +37,7 @@ public class InterServer implements Service, MinaListener<GameServerClient> {
     @Inject
     public InterServer(Settings settings, Logs logs,
                        @InterPackage ConsumerHandlerExecutor<GameServerClient, InterMessage> messagesExecutor,
-                       @InterPackage EventExecutor eventsExecutor,
+                       EventExecutor eventsExecutor,
                        @InterPackage SimpleHandlerExecutor<GameServerClient> actionsExecutor,
                        IntercomDecoder decoder,
                        IntercomEncoder encoder) {

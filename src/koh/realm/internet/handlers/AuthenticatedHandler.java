@@ -52,6 +52,7 @@ public class AuthenticatedHandler implements Controller {
 
     @Receive
     public void onSelect(RealmClient client, ServerSelectionMessage message) throws Exception {
+        System.out.println("OnSelect");
         GameServer server;
         try {
             server = serverDAO.getByKey(message.getServerId());
@@ -94,7 +95,7 @@ public class AuthenticatedHandler implements Controller {
 
     @Disconnect
     public void onDisconnect(RealmClient client) {
-        System.out.println("Client disconnected : " + client.getRemoteAddress());
+        System.out.println("Client disconnected from AuthenticatedHandler : " + client.getRemoteAddress());
         client.disconnect(false);
     }
 }

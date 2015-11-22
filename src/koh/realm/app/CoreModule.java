@@ -47,17 +47,9 @@ public class CoreModule extends AbstractModule {
         return new SimpleHandlerExecutor<>();
     }
 
-    @InterPackage @Provides
-    @Singleton
+    @Provides @Singleton
     EventExecutor provideInterEventsExecutor() {
-        return new EventExecutor(new ImprovedCachedThreadPool("InterEventsExecutor", 10, 50));
-    }
-
-    @RealmPackage
-    @Provides
-    @Singleton
-    EventExecutor provideRealmEventsExecutor() {
-        return new EventExecutor(new ImprovedCachedThreadPool("RealmEventsExecutor", 10, 50));
+        return new EventExecutor(new ImprovedCachedThreadPool("RealmServicesEventsExecutor", 10, 50, 5, 100));
     }
 
     @RealmPackage @Provides

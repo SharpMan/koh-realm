@@ -1,5 +1,7 @@
 package koh.realm.entities;
 
+import koh.protocol.client.PregenMessage;
+import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.protocol.client.enums.ServerStatusEnum;
 import koh.protocol.client.types.GameServerInformations;
 import koh.realm.intranet.GameServerClient;
@@ -32,6 +34,11 @@ public class GameServer {
     }
 
     public void setStatus(ServerStatusEnum status) {
+        if(status != this.status)
+            this.informations = new GameServerInformations(
+                    ID, status, (byte) (status == ServerStatusEnum.FULL ? 1 : 0), true, (byte) 1, 0
+            );
+
         this.status = status;
 
         if (client != null)
@@ -39,15 +46,17 @@ public class GameServer {
     }
 
     public void setOffline() {
-        if (client != null)
-            setStatus(ServerStatusEnum.OFFLINE);
+        setStatus(ServerStatusEnum.OFFLINE);
         this.client = null;
     }
 
+    private volatile GameServerInformations informations;
     public GameServerInformations toInformations() {
-        return new GameServerInformations(
-                ID, status, (byte) (status == ServerStatusEnum.FULL ? 1 : 0), true, (byte) 1, 0
-        );
+        if(informations == null)
+            this.informations = new GameServerInformations(
+                    ID, status, (byte) (status == ServerStatusEnum.FULL ? 1 : 0), true, (byte) 1, 0
+            );
+        return informations;
     }
 
 }

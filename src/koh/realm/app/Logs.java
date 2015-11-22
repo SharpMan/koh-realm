@@ -1,12 +1,12 @@
 package koh.realm.app;
 
-import koh.patterns.services.api.DependsOn;
 import koh.patterns.services.api.Service;
 import org.reflections.Reflections;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.File;
 import java.util.Calendar;
-import java.util.logging.Logger;
 
 /**
  *
@@ -17,7 +17,7 @@ public class Logs implements Service {
 
     //private PrintStream Log_Errors;
     //private BufferedWriter Log_Infos;
-    private final static Logger log = Logger.getLogger(Logs.class.getName());
+    private final static Logger log = LoggerFactory.getLogger(Logs.class);
     private String createdDate;
 
     private boolean DEBUG = true;
@@ -114,7 +114,7 @@ public class Logs implements Service {
             System.out.println("[" + atTime + "] " + toAdd);
         }*/
 
-        log.warning(toAdd);
+        log.debug(toAdd);
     }
 
     public synchronized void writeError(String toAdd) {
@@ -142,7 +142,7 @@ public class Logs implements Service {
             System.out.println("[ERROR : " + atTime + "] " + toAdd);
         }*/
 
-        log.severe(toAdd);
+        log.error(toAdd);
     }
 
     public void close() {

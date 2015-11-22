@@ -27,7 +27,7 @@ public class GameServerDAOImpl extends GameServerDAO {
     public GameServerDAOImpl(@ServiceDependency("RealmServices") DatabaseSource dbSource, Logs logs) {
         this.dbSource = dbSource;
 
-        //logs.writeInfo(this.loadAll() + " WorldServers loaded ");
+        logs.writeInfo(this.loadAll() + " WorldServers loaded ");
     }
 
     private static final String FIND_ALL = "SELECT * from realmlist;";
