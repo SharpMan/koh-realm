@@ -12,6 +12,7 @@ import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
 import koh.patterns.services.api.ServiceDependency;
 import koh.protocol.messages.connection.ServerStatusUpdateMessage;
+import koh.realm.dao.api.CharacterDAO;
 import koh.realm.intranet.GameServerClient;
 import koh.realm.intranet.InterServerContexts;
 import koh.realm.intranet.events.ServerStatusChangedEvent;
@@ -34,9 +35,12 @@ public class AuthenticatedHandler implements Controller {
 
     }
 
+    @Inject
+    private CharacterDAO characterDAO;
+
     @Receive
     public void onPlayerCreated(GameServerClient server, PlayerCreatedMessage message) throws Exception {
-
+        characterDAO.insertOrUpdate(message.accountId, server.getEntity().ID, (short)message.currentCount);
     }
 
     @Listen

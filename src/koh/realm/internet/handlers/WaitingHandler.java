@@ -42,14 +42,13 @@ import java.util.concurrent.TimeUnit;
 public class WaitingHandler implements Controller {
 
     private final Dofus2ProtocolEncoder encoder;
+    private final GameServerDAO serverDAO;
 
     private final PregenMessage wrongCredentialsMessage;
     private final PregenMessage bannedMessage;
     private final PregenMessage alreadyConnectedMessage;
     private final PregenMessage maintenanceMessage;
     private final PregenMessage endQueueMessage;
-
-    private final GameServerDAO serverDAO;
 
     @Inject
     public WaitingHandler(GameServerDAO serverDAO, Dofus2ProtocolEncoder encoder) {
