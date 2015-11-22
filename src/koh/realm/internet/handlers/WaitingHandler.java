@@ -33,7 +33,10 @@ import koh.repositories.RepositoryReference;
 import org.apache.mina.core.buffer.IoBuffer;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 @RequireContexts(@Ctx(RealmContexts.InWaitingQueue.class))
 public class WaitingHandler implements Controller {
@@ -189,7 +192,8 @@ public class WaitingHandler implements Controller {
             trans.write(endQueueMessage);
 
             trans.write(new IdentificationSuccessMessage(acc.Username, acc.NickName, acc.ID,
-                    /*Community*/ 0, acc.Right > 0, acc.SecretQuestion, Instant.now().toEpochMilli() + 3600 * 1000, false));
+                    /*Community*/ 0, acc.Right > 0, acc.SecretQuestion,
+                    Instant.now().plus(365, ChronoUnit.DAYS).toEpochMilli() , false));
 
             trans.write(serversListMessage);
         });
