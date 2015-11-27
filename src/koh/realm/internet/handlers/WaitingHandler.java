@@ -9,6 +9,7 @@ import koh.patterns.event.EventExecutor;
 import koh.patterns.event.api.Listen;
 import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
+import koh.patterns.services.api.ServiceDependency;
 import koh.protocol.client.*;
 import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.protocol.client.enums.IdentificationFailureReason;
@@ -27,6 +28,9 @@ import koh.realm.internet.events.ClientContextChangedEvent;
 import koh.realm.internet.events.ProgressChangedEvent;
 import koh.realm.intranet.events.ServerStatusChangedEvent;
 import koh.repositories.RepositoryReference;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.ThreadContext;
 import org.apache.mina.core.buffer.IoBuffer;
 
 import java.time.Instant;
@@ -35,6 +39,8 @@ import java.util.stream.Collectors;
 
 @RequireContexts(@Ctx(RealmContexts.InWaitingQueue.class))
 public class WaitingHandler implements Controller {
+
+    private static final Logger logger = LogManager.getLogger("RealmServer");
 
     private final Dofus2ProtocolEncoder encoder;
     private final GameServerDAO serverDAO;
@@ -46,7 +52,7 @@ public class WaitingHandler implements Controller {
     private final PregenMessage endQueueMessage;
 
     @Inject
-    public WaitingHandler(GameServerDAO serverDAO, Dofus2ProtocolEncoder encoder) {
+    public WaitingHandler(@ServiceDependency("RealmServices") GameServerDAO serverDAO, Dofus2ProtocolEncoder encoder) {
         this.encoder = encoder;
         this.serverDAO = serverDAO;
 
@@ -72,7 +78,7 @@ public class WaitingHandler implements Controller {
     }
 
     private @Inject EventExecutor eventsEmitter;
-    private @Inject AccountDAO accountDAO;
+    private @Inject @ServiceDependency("RealmServices") AccountDAO accountDAO;
 
     @Listen
     public void onContextChanged(ClientContextChangedEvent event) {
@@ -162,6 +168,14 @@ public class WaitingHandler implements Controller {
             });
         } catch(LambdaException exception) {
             exception.treat();
+
+            ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
+            try {
+                logger.info("Server refused connection");
+            } finally {
+                ThreadContext.remove("clientAddress");
+            }
+
             return;
         }
 
@@ -190,7 +204,12 @@ public class WaitingHandler implements Controller {
 
     @Disconnect
     public void onDisconnect(RealmClient client) {
-        System.out.println("Client disconnected from WaitingHandler : " + client.getRemoteAddress());
+        ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
+        try {
+            logger.info("Client disconnected");
+        } finally {
+            ThreadContext.remove("clientAddress");
+        }
         queue.remove(client);
         client.disconnect(false);
     }

@@ -1,12 +1,10 @@
 package koh.realm.app;
 
-import koh.patterns.services.api.DependsOn;
 import koh.patterns.services.api.Service;
 import koh.repositories.MemoryFinalizer;
 
 import java.util.concurrent.TimeUnit;
 
-@DependsOn({Logs.class})
 public class MemoryService implements Service {
 
     private MemoryFinalizer cleaner;

@@ -8,6 +8,8 @@ import koh.realm.entities.Account;
 import koh.realm.utils.sql.ConnectionStatement;
 import koh.repositories.BiRecyclingRepository;
 import koh.repositories.RepositoryReference;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -22,6 +24,8 @@ import java.util.concurrent.TimeUnit;
  * @author Neo-Craft
  */
 public class AccountDAOImpl extends AccountDAO {
+
+    private static final Logger logger = LogManager.getLogger(AccountDAO.class);
 
     private final DatabaseSource dbSource;
 
@@ -61,7 +65,8 @@ public class AccountDAOImpl extends AccountDAO {
 
             stmt.execute();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e);
+            logger.warn(e.getMessage());
         }
     }
 
@@ -85,10 +90,8 @@ public class AccountDAOImpl extends AccountDAO {
 
             ResultSet RS = stmt.executeQuery();
 
-
-            if(!RS.first() || RS.getString("username") == null) {
-                throw new NullPointerException();
-            }
+            if(!RS.first())
+                return null;
 
             return new Account() {
                 {
@@ -115,15 +118,11 @@ public class AccountDAOImpl extends AccountDAO {
                     }
                 }
             };
-        }catch(NullPointerException e) {
-            throw new NullPointerException();
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            //TODO propagate Errors
-            e.printStackTrace();
-            //Main.Logs().writeInfo("Connexion a la DB Perdue, deconnexion du compte en connexion en attendant la reconnexion de la DB...");
-            throw new NullPointerException();
+        }catch (Exception e) {
+            logger.error(e);
+            logger.warn(e.getMessage());
         }
+        return null;
     }
 
     @Override
@@ -145,8 +144,8 @@ public class AccountDAOImpl extends AccountDAO {
             stmt.setInt(1, id);
             ResultSet RS = stmt.executeQuery();
 
-            if (!RS.first() || RS.getString("username") == null)
-                throw new NullPointerException();
+            if (!RS.first())
+                return null;
 
             return new Account() {
                 {
@@ -174,15 +173,23 @@ public class AccountDAOImpl extends AccountDAO {
                     }
                 }
             };
-        }catch(NullPointerException e) {
-            throw new NullPointerException();
-        } catch (Exception e) {
-            //TODO propagate Errors
-            e.printStackTrace();
-            //Main.Logs().writeInfo("Connexion a la DB Perdue, deconnexion du compte en connexion en attendant la reconnexion de la DB...");
-            //throw new Exception();
-            throw new NullPointerException();
+        }catch (Exception e) {
+            logger.error(e);
+            logger.warn(e.getMessage());
         }
+        return null;
     }
 
+    @Override
+    public void start() {
+    }
+
+    @Override
+    public void stop() {
+        accounts.dispose();
+        accounts.values().stream().forEach((account) -> account.sync(() -> {
+            if(account.loaded())
+                this.save(account.get());
+        }));
+    }
 }

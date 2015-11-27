@@ -1,17 +1,16 @@
 package koh.realm;
 
-import com.google.inject.Key;
 import koh.patterns.services.ServicesProvider;
 import koh.realm.app.AppModule;
 import koh.realm.app.DatabaseSource;
-import koh.realm.app.Logs;
 import koh.realm.app.MemoryService;
-import koh.realm.intranet.InterServer;
+import koh.realm.dao.api.AccountDAO;
+import koh.realm.dao.api.CharacterDAO;
+import koh.realm.dao.api.GameServerDAO;
 import koh.realm.internet.RealmServer;
-import org.reflections.Reflections;
-
-import java.util.ArrayList;
-import java.util.List;
+import koh.realm.intranet.InterServer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  *
@@ -19,27 +18,36 @@ import java.util.List;
  */
 public class Main {
 
+    private static final Logger logger = LogManager.getLogger(Main.class);
+
+    //TODO create DAO as service, for stopping them in good order
+
     public static void main(String[] args) {
         try {
+
+            logger.info("Starting realm server ...");
             long time = System.currentTimeMillis();
 
             AppModule app = new AppModule();
             ServicesProvider services = app.create(
                     MemoryService.class,
                     DatabaseSource.class,
-                    Logs.class,
-                    RealmServer.class,
+
+                    AccountDAO.class,
+                    GameServerDAO.class,
+                    CharacterDAO.class,
+
+                    //RealmServer.class,
                     InterServer.class
             );
 
             services.start();
 
-            app.resolver().getInstance(Key.get(Logs.class, ServicesProvider.inGroup("RealmServices")))
-                    .writeInfo("RealmServer start in " + (System.currentTimeMillis() - time) + " ms.");
+            logger.info("RealmServer start in " + (System.currentTimeMillis() - time) + " ms.");
 
         } catch (Exception e) {
-            System.out.println(e.getMessage());
-            e.printStackTrace();
+            logger.fatal(e);
+            logger.error(e.getMessage());
         }
     }
 

@@ -25,10 +25,10 @@ import koh.repositories.RepositoryReference;
 @RequireContexts(@Ctx(value = InterServerContexts.Authenticated.class))
 public class AuthenticatedHandler implements Controller {
 
-    @Inject @ServiceDependency("RealmServices")
+    @Inject
     private RealmServer realmServer;
 
-    @Inject
+    @Inject @ServiceDependency("RealmServices")
     private CharacterDAO characterDAO;
 
     @Receive

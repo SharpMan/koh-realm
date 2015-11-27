@@ -8,6 +8,7 @@ import koh.patterns.Controller;
 import koh.patterns.event.EventExecutor;
 import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
+import koh.patterns.services.api.ServiceDependency;
 import koh.protocol.client.enums.ServerStatusEnum;
 import koh.realm.dao.api.GameServerDAO;
 import koh.realm.entities.GameServer;

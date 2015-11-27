@@ -18,6 +18,7 @@ import koh.realm.utils.Settings;
 import koh.realm.utils.sql.ConnectionResult;
 import koh.realm.utils.sql.ConnectionStatement;
 
+import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -28,7 +29,7 @@ import java.sql.Statement;
  * @author Neo-Craft
  */
 
-@DependsOn({Logs.class, MemoryService.class})
+@DependsOn({MemoryService.class})
 public class DatabaseSource implements Service {
 
     private final HikariConfig config;
@@ -45,8 +46,10 @@ public class DatabaseSource implements Service {
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+        //config.addDataSourceProperty("dataSource.logWriter", new PrintWriter(System.out));
+        config.setMaximumPoolSize(30);
 
-        this.dataSource = new HikariDataSource(config);
+        //this.dataSource = new HikariDataSource(config);
     }
 
     public Connection getConnectionOfPool() throws SQLException {
@@ -87,9 +90,9 @@ public class DatabaseSource implements Service {
 
     @Override
     public void start() {
-        /*if(dataSource != null && !dataSource.isClosed())
+        if(dataSource != null && !dataSource.isClosed())
             dataSource.close();
-        this.dataSource = new HikariDataSource(config);*/
+        this.dataSource = new HikariDataSource(config);
     }
 
     @Override
@@ -99,10 +102,6 @@ public class DatabaseSource implements Service {
     }
 
     @Override
-    public void configure(Binder binder) {
-        binder.bind(AccountDAO.class).to(AccountDAOImpl.class).in(Scopes.SINGLETON);
-        binder.bind(CharacterDAO.class).to(CharacterDAOImpl.class).in(Scopes.SINGLETON);
-        binder.bind(GameServerDAO.class).to(GameServerDAOImpl.class).in(Scopes.SINGLETON);
-    }
+    public void configure(Binder binder) { }
 
 }

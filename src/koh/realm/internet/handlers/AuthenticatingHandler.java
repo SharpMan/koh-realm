@@ -18,10 +18,15 @@ import koh.protocol.messages.security.RawDataMessage;
 import koh.realm.internet.AuthenticationToken;
 import koh.realm.internet.RealmClient;
 import koh.realm.internet.RealmContexts;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.ThreadContext;
 import org.apache.mina.core.buffer.IoBuffer;
 
 @RequireContexts(@Ctx(RealmContexts.Authenticating.class))
 public class AuthenticatingHandler implements Controller {
+
+    private static final Logger logger = LogManager.getLogger("RealmServer");
 
     private final PregenMessage welcomeMessageBuffer;
 
@@ -40,7 +45,12 @@ public class AuthenticatingHandler implements Controller {
 
     @Connect
     public void onConnect(RealmClient client) {
-        System.out.println("Client connected : " + client.getRemoteAddress());
+        ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
+        try {
+            logger.info("Client connected");
+        } finally {
+            ThreadContext.remove("clientAddress");
+        }
         client.write(welcomeMessageBuffer);
     }
 
@@ -55,7 +65,12 @@ public class AuthenticatingHandler implements Controller {
 
     @Disconnect
     public void onDisconnect(RealmClient client) {
-        System.out.println("Client disconnected from AuthenticatingHandler : " + client.getRemoteAddress());
+        ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
+        try {
+            logger.info("Client disconnected");
+        } finally {
+            ThreadContext.remove("clientAddress");
+        }
     }
 
 }

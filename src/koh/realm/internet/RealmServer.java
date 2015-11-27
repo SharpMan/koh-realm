@@ -1,7 +1,9 @@
 package koh.realm.internet;
 
+import com.google.inject.Binding;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
+import com.google.inject.Key;
 import koh.mina.MinaServer;
 import koh.mina.api.MinaListener;
 import koh.mina.api.annotations.Receive;
@@ -18,16 +20,24 @@ import koh.protocol.client.Message;
 import koh.protocol.client.codec.Dofus2ProtocolDecoder;
 import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.realm.app.DatabaseSource;
-import koh.realm.app.Logs;
+import koh.realm.dao.api.AccountDAO;
+import koh.realm.dao.api.CharacterDAO;
+import koh.realm.dao.api.GameServerDAO;
 import koh.realm.intranet.InterServer;
 import koh.realm.utils.Settings;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+import org.apache.logging.log4j.*;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.core.write.WriteToClosedSessionException;
 
 import java.io.IOException;
+import java.util.Map;
 
-@DependsOn({Logs.class, DatabaseSource.class, InterServer.class})
+@DependsOn({GameServerDAO.class, AccountDAO.class, CharacterDAO.class, InterServer.class})
 public class RealmServer implements Service, MinaListener<RealmClient> {
+
+    private static final Logger logger = LogManager.getLogger("RealmServer");
 
     /**
      * 1 * estimated client optimal size (64)
@@ -47,7 +57,7 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
     private final EventExecutor eventsExecutor;
 
     @Inject
-    public RealmServer(Settings settings, Logs logs,
+    public RealmServer(Settings settings,
                        @RealmPackage ConsumerHandlerExecutor<RealmClient, Message> messagesExecutor,
                        EventExecutor eventsExecutor,
                        @RealmPackage SimpleHandlerExecutor<RealmClient> actionsExecutor,
@@ -76,7 +86,8 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
         try {
             minaServer.bind(settings.getStringElement("Login.Host"),
                     settings.getIntElement("Login.Port"));
-            System.out.println(settings.getIntElement("Login.Port"));
+            logger.info("RealmServer bound on {}:{}",
+                    settings.getStringElement("Login.Host"), settings.getIntElement("Login.Port"));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -87,24 +98,60 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
         minaServer.dispose();
     }
 
+    private static final Marker EXC_MARKER = MarkerManager.getMarker("REALM_EXC_CATCH");
+
     @Override
     public void onException(RealmClient client, Throwable exception) {
         if(exception instanceof WriteToClosedSessionException)
             return; //ignore
 
-        exception.printStackTrace();
-        System.out.println(exception.getMessage());
+        ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
+        try {
+            logger.error(EXC_MARKER, exception.getMessage(), exception);
+        } finally {
+            ThreadContext.remove("clientAddress");
+        }
     }
+
+    private static final Marker MSG_SENT_MARKER = MarkerManager.getMarker("REALM_MSG_SENT");
 
     @Override
     public void onMessageSent(RealmClient client, Object message) {
-        System.out.println("Sent : " + message);
+        if(message == null)
+            return;
+
+        ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
+        try {
+            logger.debug(MSG_SENT_MARKER, message);
+        } finally {
+            ThreadContext.remove("clientAddress");
+        }
+    }
+
+    private static final Marker MSG_RECVD_MARKER = MarkerManager.getMarker("REALM_MSG_RECV");
+
+    @Override
+    public void onReceived(RealmClient client, Object message) {
+        if(message == null)
+            return;
+
+        ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
+        try {
+            logger.info(MSG_RECVD_MARKER, message);
+        } finally {
+            ThreadContext.remove("clientAddress");
+        }
     }
 
     private static final String HANDLERS_PACKAGE = "koh.realm.internet.handlers";
 
     @Override
     public void inject(Injector injector) {
+        Map<Key<?>,Binding<?>> map = injector.getBindings();
+        for(Map.Entry<Key<?>, Binding<?>> e : map.entrySet()) {
+            System.out.println(e.getKey() + ": " + e.getValue());
+        }
+
         injector = new ControllersBinder(injector, HANDLERS_PACKAGE).bind();
 
         injector.createChildInjector(

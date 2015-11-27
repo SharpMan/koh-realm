@@ -8,12 +8,17 @@ import koh.protocol.client.MessageTransaction;
 import koh.realm.entities.Account;
 import koh.realm.internet.events.ClientContextChangedEvent;
 import koh.repositories.RepositoryReference;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.ThreadContext;
 import org.apache.mina.core.future.CloseFuture;
 import org.apache.mina.core.session.IoSession;
 
 import java.util.function.Consumer;
 
 public class RealmClient extends MinaClient {
+
+    private static final Logger logger = LogManager.getLogger("RealmServer");
 
     private final EventExecutor eventsEmitter;
 
@@ -39,7 +44,13 @@ public class RealmClient extends MinaClient {
             super.setHandlerContext(context);
         } finally {
             eventsEmitter.fire(toFire);
-            System.out.println("Client state changed : " + context.getClass().getSimpleName());
+            
+            ThreadContext.put("clientAddress", this.getRemoteAddress().getAddress().getHostAddress());
+            try {
+                logger.info("Context changed to " + context.getClass().getSimpleName());
+            } finally {
+                ThreadContext.remove("clientAddress");
+            }
         }
     }
 

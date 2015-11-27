@@ -8,6 +8,7 @@ import koh.mina.api.annotations.Receive;
 import koh.patterns.Controller;
 import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
+import koh.patterns.services.api.ServiceDependency;
 import koh.protocol.client.PregenMessage;
 import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.protocol.client.enums.IdentificationFailureReason;
@@ -24,6 +25,9 @@ import koh.realm.entities.GameServer;
 import koh.realm.internet.RealmClient;
 import koh.realm.internet.RealmContexts;
 import koh.realm.utils.Util;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.ThreadContext;
 import org.apache.mina.core.buffer.IoBuffer;
 
 import java.sql.Timestamp;
@@ -32,12 +36,14 @@ import java.time.Instant;
 @RequireContexts(@Ctx(RealmContexts.Authenticated.class))
 public class AuthenticatedHandler implements Controller {
 
+    private static final Logger logger = LogManager.getLogger("RealmServer");
+
     private final PregenMessage timeOutMessage;
 
     @Inject
     public AuthenticatedHandler(Dofus2ProtocolEncoder encoder) {
         this.timeOutMessage = new PregenMessage(
-                encoder.encodeMessage(new IdentificationFailedMessage(IdentificationFailureReason.TIME_OUT), IoBuffer.allocate(16)).flip().asReadOnlyBuffer()
+                encoder.encodeMessage(new IdentificationFailedMessage(IdentificationFailureReason.TIME_OUT), IoBuffer.allocate(16))
         );
     }
 
@@ -46,13 +52,17 @@ public class AuthenticatedHandler implements Controller {
 
     @InactiveTimeout
     public void onInactivityTimeout(RealmClient client) {
-        System.out.println("Client timed out : " + client.getRemoteAddress());
+        ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
+        try {
+            logger.info("Client timed out");
+        } finally {
+            ThreadContext.remove("clientAddress");
+        }
         client.disconnect(timeOutMessage);
     }
 
     @Receive
     public void onSelect(RealmClient client, ServerSelectionMessage message) throws Exception {
-        System.out.println("OnSelect");
         GameServer server;
         try {
             server = serverDAO.getByKey(message.getServerId());
@@ -84,7 +94,7 @@ public class AuthenticatedHandler implements Controller {
                 acc.ID, acc.NickName, acc.SecretQuestion, acc.SecretAnswer, acc.LastIP, acc.Right, acc.last_login));
 
         client.getAccount().sync(() -> {
-            acc.LastIP = client.getRemoteAddress().getAddress().toString();
+            acc.LastIP = client.getRemoteAddress().getAddress().getHostAddress();
             acc.last_login = Timestamp.from(Instant.now());
             accountDAO.save(acc);
         });
@@ -95,7 +105,12 @@ public class AuthenticatedHandler implements Controller {
 
     @Disconnect
     public void onDisconnect(RealmClient client) {
-        System.out.println("Client disconnected from AuthenticatedHandler : " + client.getRemoteAddress());
+        ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
+        try {
+            logger.info("Client disconnected");
+        } finally {
+            ThreadContext.remove("clientAddress");
+        }
         client.disconnect(false);
     }
 }

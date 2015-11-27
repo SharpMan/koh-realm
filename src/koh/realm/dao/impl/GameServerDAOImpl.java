@@ -3,13 +3,13 @@ package koh.realm.dao.impl;
 import com.google.inject.Inject;
 import koh.patterns.services.api.ServiceDependency;
 import koh.realm.app.DatabaseSource;
-import koh.realm.app.Logs;
 import koh.realm.dao.api.GameServerDAO;
 import koh.realm.entities.GameServer;
 import koh.realm.utils.sql.ConnectionResult;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.sql.ResultSet;
-import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
@@ -20,15 +20,16 @@ import java.util.stream.Stream;
  */
 public class GameServerDAOImpl extends GameServerDAO {
 
+    private static final Logger logger = LogManager.getLogger(GameServerDAO.class);
+
     private final Map<Short, GameServer> gameServers = new ConcurrentHashMap<>();
 
     private final DatabaseSource dbSource;
 
     @Inject
-    public GameServerDAOImpl(@ServiceDependency("RealmServices") DatabaseSource dbSource, Logs logs) {
+    public GameServerDAOImpl(@ServiceDependency("RealmServices") DatabaseSource dbSource) {
+        System.out.println("New GameServerDAO !");
         this.dbSource = dbSource;
-
-        logs.writeInfo(this.loadAll() + " WorldServers loaded ");
     }
 
     private static final String FIND_ALL = "SELECT * from realmlist;";
@@ -51,8 +52,8 @@ public class GameServerDAOImpl extends GameServerDAO {
 
             return gameServers.size();
         } catch (Exception e) {
-            System.err.println(e.getMessage());
-            e.printStackTrace();
+            logger.error(e);
+            logger.warn(e.getMessage());
         }
         return 0;
     }
@@ -78,5 +79,14 @@ public class GameServerDAOImpl extends GameServerDAO {
     @Override
     public GameServer getByKey(Short guid) throws Exception {
         return gameServers.get(guid);
+    }
+
+    @Override
+    public void start() {
+        logger.info(this.loadAll() + " WorldServers loaded ");
+    }
+
+    @Override
+    public void stop() {
     }
 }
