@@ -2,13 +2,14 @@ package koh.realm.dao.impl;
 
 import com.google.inject.Inject;
 import koh.patterns.services.api.ServiceDependency;
-import koh.realm.app.DatabaseSource;
+import koh.realm.dao.DatabaseSource;
 import koh.realm.dao.api.CharacterDAO;
 import koh.realm.utils.sql.ConnectionStatement;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.sql.PreparedStatement;
+import java.util.function.Consumer;
 
 /**
  *
@@ -18,12 +19,8 @@ public class CharacterDAOImpl extends CharacterDAO {
 
     private static final Logger logger = LogManager.getLogger(CharacterDAO.class);
 
-    private final DatabaseSource dbSource;
-
     @Inject
-    public CharacterDAOImpl(@ServiceDependency("RealmServices") DatabaseSource dbSource) {
-        this.dbSource = dbSource;
-    }
+    private @ServiceDependency("RealmServices") DatabaseSource dbSource;
 
     private static final String REPLACE_BY_OWNER = "REPLACE INTO `worlds_characters` VALUES (?,?,?);";
 

@@ -45,12 +45,7 @@ public class RealmClient extends MinaClient {
         } finally {
             eventsEmitter.fire(toFire);
             
-            ThreadContext.put("clientAddress", this.getRemoteAddress().getAddress().getHostAddress());
-            try {
-                logger.info("Context changed to " + context.getClass().getSimpleName());
-            } finally {
-                ThreadContext.remove("clientAddress");
-            }
+            this.log((logger) -> logger.info("Context changed to " + context.getClass().getSimpleName()));
         }
     }
 
@@ -72,6 +67,23 @@ public class RealmClient extends MinaClient {
 
     public void setAccount(RepositoryReference<Account> account) {
         this.account = account;
+    }
+
+    public void log(Consumer<Logger> writer) {
+        ThreadContext.put("clientAddress", this.getRemoteAddress().getAddress().getHostAddress());
+        if(account != null && account.loaded()) {
+            ThreadContext.put("accountName", account.get().Username);
+            ThreadContext.put("accountId", Integer.toString(account.get().ID));
+        }
+        try {
+            writer.accept(logger);
+        } finally {
+            ThreadContext.remove("clientAddress");
+            if(account != null && account.loaded()) {
+                ThreadContext.remove("accountName");
+                ThreadContext.remove("accountId");
+            }
+        }
     }
 
     @Override

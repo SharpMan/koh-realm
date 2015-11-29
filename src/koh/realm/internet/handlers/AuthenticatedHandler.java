@@ -36,8 +36,6 @@ import java.time.Instant;
 @RequireContexts(@Ctx(RealmContexts.Authenticated.class))
 public class AuthenticatedHandler implements Controller {
 
-    private static final Logger logger = LogManager.getLogger("RealmServer");
-
     private final PregenMessage timeOutMessage;
 
     @Inject
@@ -52,12 +50,7 @@ public class AuthenticatedHandler implements Controller {
 
     @InactiveTimeout
     public void onInactivityTimeout(RealmClient client) {
-        ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
-        try {
-            logger.info("Client timed out");
-        } finally {
-            ThreadContext.remove("clientAddress");
-        }
+        client.log((logger) -> logger.info("Client timed out"));
         client.disconnect(timeOutMessage);
     }
 
@@ -105,12 +98,7 @@ public class AuthenticatedHandler implements Controller {
 
     @Disconnect
     public void onDisconnect(RealmClient client) {
-        ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
-        try {
-            logger.info("Client disconnected");
-        } finally {
-            ThreadContext.remove("clientAddress");
-        }
+        client.log((logger) -> logger.info("Client disconnected"));
         client.disconnect(false);
     }
 }

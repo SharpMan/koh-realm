@@ -1,13 +1,13 @@
-package koh.realm.app;
+package koh.realm.dao;
 
 import com.google.inject.Binder;
 import com.google.inject.Inject;
-import com.google.inject.Scopes;
-import com.google.inject.Singleton;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import koh.patterns.services.api.DependsOn;
 import koh.patterns.services.api.Service;
+import koh.realm.app.Loggers;
+import koh.realm.app.MemoryService;
 import koh.realm.dao.api.AccountDAO;
 import koh.realm.dao.api.CharacterDAO;
 import koh.realm.dao.api.GameServerDAO;
@@ -18,7 +18,6 @@ import koh.realm.utils.Settings;
 import koh.realm.utils.sql.ConnectionResult;
 import koh.realm.utils.sql.ConnectionStatement;
 
-import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -29,27 +28,52 @@ import java.sql.Statement;
  * @author Neo-Craft
  */
 
-@DependsOn({MemoryService.class})
+@DependsOn({Loggers.class, MemoryService.class})
 public class DatabaseSource implements Service {
 
-    private final HikariConfig config;
+    @Override
+    public void configure(Binder binder){
+        binder.bind(AccountDAO.class).to(AccountDAOImpl.class).asEagerSingleton();
+        binder.bind(CharacterDAO.class).to(CharacterDAOImpl.class).asEagerSingleton();
+        binder.bind(GameServerDAO.class).to(GameServerDAOImpl.class).asEagerSingleton();
+    }
+
+    @Inject private Settings settings;
+    @Inject private AccountDAO accounts;
+    @Inject private CharacterDAO characters;
+    @Inject private GameServerDAO servers;
+
     private HikariDataSource dataSource;
 
-    @Inject
-    public DatabaseSource(Settings settings) {
-        this.config = new HikariConfig();
-        config.setJdbcUrl("jdbc:mysql://" + settings.getStringElement("Database.Host") + "/" + settings.getStringElement("Database.Name"));
+    @Override
+    public void start() {
+        if(dataSource != null && !dataSource.isClosed())
+            dataSource.close();
 
-        //config.setDataSourceClassName("com.mysql.jdbc.jdbc2.optional.MysqlDataSource");
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:mysql://" + settings.getStringElement("Database.Host") + "/" + settings.getStringElement("Database.Name"));
         config.setUsername(settings.getStringElement("Database.User"));
         config.setPassword(settings.getStringElement("Database.Password"));
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-        //config.addDataSourceProperty("dataSource.logWriter", new PrintWriter(System.out));
         config.setMaximumPoolSize(30);
 
-        //this.dataSource = new HikariDataSource(config);
+        this.dataSource = new HikariDataSource(config);
+
+        accounts.start();
+        servers.start();
+        characters.start();
+    }
+
+    @Override
+    public void stop() {
+        accounts.stop();
+        servers.stop();
+        characters.stop();
+
+        if(dataSource != null)
+            dataSource.close();
     }
 
     public Connection getConnectionOfPool() throws SQLException {
@@ -87,21 +111,5 @@ public class DatabaseSource implements Service {
             statement.setQueryTimeout(secsTimeout);
         return new ConnectionResult(connection, statement, statement.executeQuery(query));
     }
-
-    @Override
-    public void start() {
-        if(dataSource != null && !dataSource.isClosed())
-            dataSource.close();
-        this.dataSource = new HikariDataSource(config);
-    }
-
-    @Override
-    public void stop() {
-        if(dataSource != null)
-            dataSource.close();
-    }
-
-    @Override
-    public void configure(Binder binder) { }
 
 }

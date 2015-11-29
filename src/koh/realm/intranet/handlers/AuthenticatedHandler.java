@@ -28,7 +28,7 @@ public class AuthenticatedHandler implements Controller {
     @Inject
     private RealmServer realmServer;
 
-    @Inject @ServiceDependency("RealmServices")
+    @Inject
     private CharacterDAO characterDAO;
 
     @Receive

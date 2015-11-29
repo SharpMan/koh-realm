@@ -1,9 +1,7 @@
 package koh.realm.intranet;
 
-import com.google.inject.Binding;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
-import com.google.inject.Key;
 import koh.inter.InterMessage;
 import koh.inter.IntercomDecoder;
 import koh.inter.IntercomEncoder;
@@ -13,55 +11,48 @@ import koh.mina.api.annotations.Receive;
 import koh.patterns.ControllersBinder;
 import koh.patterns.event.EventExecutor;
 import koh.patterns.event.EventListeningProvider;
-import koh.patterns.handler.*;
+import koh.patterns.handler.ConsumerHandlerExecutor;
+import koh.patterns.handler.ConsumerHandlingProvider;
+import koh.patterns.handler.SimpleHandlerExecutor;
+import koh.patterns.handler.SimpleHandlingProvider;
 import koh.patterns.services.api.DependsOn;
 import koh.patterns.services.api.Service;
-import koh.realm.app.DatabaseSource;
-import koh.realm.dao.api.AccountDAO;
-import koh.realm.dao.api.CharacterDAO;
-import koh.realm.dao.api.GameServerDAO;
+import koh.realm.dao.DatabaseSource;
 import koh.realm.utils.Settings;
-import org.apache.logging.log4j.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Marker;
+import org.apache.logging.log4j.MarkerManager;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.core.write.WriteToClosedSessionException;
-
-import java.util.Map;
 
 /**
  *
  * @author Neo-Craft
  */
 
-@DependsOn({GameServerDAO.class, AccountDAO.class, CharacterDAO.class})
+@DependsOn({DatabaseSource.class})
 public class InterServer implements Service, MinaListener<GameServerClient> {
 
     private static final Logger logger = LogManager.getLogger(InterServer.class);
 
-    private final MinaServer<GameServerClient, InterMessage> minaServer;
-    private final Settings settings;
-
-    private final ConsumerHandlerExecutor<GameServerClient, InterMessage> messagesExecutor;
-    private final SimpleHandlerExecutor<GameServerClient> actionsExecutor;
-    private final EventExecutor eventsExecutor;
+    private MinaServer<GameServerClient, InterMessage> minaServer;
 
     @Inject
-    public InterServer(Settings settings,
-                       @InterPackage ConsumerHandlerExecutor<GameServerClient, InterMessage> messagesExecutor,
-                       EventExecutor eventsExecutor,
-                       @InterPackage SimpleHandlerExecutor<GameServerClient> actionsExecutor,
-                       IntercomDecoder decoder,
-                       IntercomEncoder encoder) {
+    private Settings settings;
 
-        this.messagesExecutor = messagesExecutor;
-        this.eventsExecutor = eventsExecutor;
-        this.actionsExecutor = actionsExecutor;
+    @Inject
+    private @InterPackage ConsumerHandlerExecutor<GameServerClient, InterMessage> messagesExecutor;
 
-        this.settings = settings;
-        this.minaServer = new MinaServer<>(this::newClient, actionsExecutor,
-                messagesExecutor, this, InterMessage.class);
+    @Inject
+    private EventExecutor eventsExecutor;
 
-        minaServer.configure(decoder, encoder, 256, true);
-    }
+    @Inject
+    private @InterPackage SimpleHandlerExecutor<GameServerClient> actionsExecutor;
+
+    @Inject private IntercomDecoder decoder;
+
+    @Inject private IntercomEncoder encoder;
 
     private GameServerClient newClient(IoSession session) {
         return new GameServerClient(session, eventsExecutor);
@@ -69,6 +60,11 @@ public class InterServer implements Service, MinaListener<GameServerClient> {
 
     @Override
     public void start() {
+        this.minaServer = new MinaServer<>(this::newClient, actionsExecutor,
+                messagesExecutor, this, InterMessage.class);
+
+        minaServer.configure(decoder, encoder, 256, true);
+
         try {
             minaServer.bind(settings.getStringElement("Inter.Host"), settings.getIntElement("Inter.Port"));
             logger.info("InterServer bound on {}:{}",
@@ -118,14 +114,9 @@ public class InterServer implements Service, MinaListener<GameServerClient> {
 
     @Override
     public void inject(Injector injector) {
-        Map<Key<?>,Binding<?>> map = injector.getBindings();
-        for(Map.Entry<Key<?>, Binding<?>> e : map.entrySet()) {
-            System.out.println(e.getKey() + ": " + e.getValue());
-        }
-
         injector = new ControllersBinder(injector, HANDLERS_PACKAGE).bind();
 
-        injector = injector.createChildInjector(
+        injector.createChildInjector(
                 new ConsumerHandlingProvider<>(messagesExecutor, injector,
                         HANDLERS_PACKAGE, GameServerClient.class, Receive.class, InterMessage.class),
 

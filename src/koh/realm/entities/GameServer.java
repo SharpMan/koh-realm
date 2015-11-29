@@ -51,6 +51,7 @@ public class GameServer {
     }
 
     private volatile GameServerInformations informations;
+    //TODO uncache them cauz depends on account(characters count per server)
     public GameServerInformations toInformations() {
         if(informations == null)
             this.informations = new GameServerInformations(

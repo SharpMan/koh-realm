@@ -2,7 +2,8 @@ package koh.realm;
 
 import koh.patterns.services.ServicesProvider;
 import koh.realm.app.AppModule;
-import koh.realm.app.DatabaseSource;
+import koh.realm.app.Loggers;
+import koh.realm.dao.DatabaseSource;
 import koh.realm.app.MemoryService;
 import koh.realm.dao.api.AccountDAO;
 import koh.realm.dao.api.CharacterDAO;
@@ -20,30 +21,21 @@ public class Main {
 
     private static final Logger logger = LogManager.getLogger(Main.class);
 
-    //TODO create DAO as service, for stopping them in good order
-
     public static void main(String[] args) {
         try {
 
-            logger.info("Starting realm server ...");
-            long time = System.currentTimeMillis();
-
             AppModule app = new AppModule();
             ServicesProvider services = app.create(
-                    MemoryService.class,
-                    DatabaseSource.class,
+                    new DatabaseSource(),
+                    new MemoryService(),
 
-                    AccountDAO.class,
-                    GameServerDAO.class,
-                    CharacterDAO.class,
+                    new RealmServer(),
+                    new InterServer(),
 
-                    //RealmServer.class,
-                    InterServer.class
+                    new Loggers()
             );
 
-            services.start();
-
-            logger.info("RealmServer start in " + (System.currentTimeMillis() - time) + " ms.");
+            services.start(app.resolver());
 
         } catch (Exception e) {
             logger.fatal(e);

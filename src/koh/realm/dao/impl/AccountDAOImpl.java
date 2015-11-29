@@ -2,7 +2,7 @@ package koh.realm.dao.impl;
 
 import com.google.inject.Inject;
 import koh.patterns.services.api.ServiceDependency;
-import koh.realm.app.DatabaseSource;
+import koh.realm.dao.DatabaseSource;
 import koh.realm.dao.api.AccountDAO;
 import koh.realm.entities.Account;
 import koh.realm.utils.sql.ConnectionStatement;
@@ -15,9 +15,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  *
@@ -27,16 +26,14 @@ public class AccountDAOImpl extends AccountDAO {
 
     private static final Logger logger = LogManager.getLogger(AccountDAO.class);
 
-    private final DatabaseSource dbSource;
-
     private static final int RECYCLE_MINS = 60;
 
     private final BiRecyclingRepository<Integer, String, Account> accounts;
 
     @Inject
-    public AccountDAOImpl(@ServiceDependency("RealmServices") DatabaseSource dbSource) {
-        this.dbSource = dbSource;
+    private @ServiceDependency("RealmServices") DatabaseSource dbSource;
 
+    public AccountDAOImpl() {
         this.accounts = new BiRecyclingRepository<>((acc) -> acc.ID, (acc) -> acc.Username,
                 this::loadById, this::loadByUsername,
                 this::save, (val) -> val, String::toLowerCase,
@@ -64,6 +61,8 @@ public class AccountDAOImpl extends AccountDAO {
             stmt.setInt(3, acc.ID);
 
             stmt.execute();
+
+            logger.debug("Account [{}] {} saved", acc.ID, acc.Username);
         } catch (Exception e) {
             logger.error(e);
             logger.warn(e.getMessage());

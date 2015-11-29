@@ -2,7 +2,7 @@ package koh.realm.dao.impl;
 
 import com.google.inject.Inject;
 import koh.patterns.services.api.ServiceDependency;
-import koh.realm.app.DatabaseSource;
+import koh.realm.dao.DatabaseSource;
 import koh.realm.dao.api.GameServerDAO;
 import koh.realm.entities.GameServer;
 import koh.realm.utils.sql.ConnectionResult;
@@ -12,6 +12,7 @@ import org.apache.logging.log4j.Logger;
 import java.sql.ResultSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
@@ -24,13 +25,8 @@ public class GameServerDAOImpl extends GameServerDAO {
 
     private final Map<Short, GameServer> gameServers = new ConcurrentHashMap<>();
 
-    private final DatabaseSource dbSource;
-
     @Inject
-    public GameServerDAOImpl(@ServiceDependency("RealmServices") DatabaseSource dbSource) {
-        System.out.println("New GameServerDAO !");
-        this.dbSource = dbSource;
-    }
+    private @ServiceDependency("RealmServices") DatabaseSource dbSource;
 
     private static final String FIND_ALL = "SELECT * from realmlist;";
 

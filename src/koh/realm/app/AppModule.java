@@ -26,9 +26,8 @@ public class AppModule extends AbstractModule {
         this.app = Guice.createInjector(this);
     }
 
-    @SafeVarargs
-    public final ServicesProvider create(Class<? extends Service>... services) {
-        ServicesProvider provider = new ServicesProvider("RealmServices", app, services);
+    public final ServicesProvider create(Service... services) {
+        ServicesProvider provider = new ServicesProvider("RealmServices", services);
         app = app.createChildInjector(provider);
         return provider;
     }
@@ -40,28 +39,6 @@ public class AppModule extends AbstractModule {
     @Override
     protected void configure() {
         install(new CoreModule());
-    }
-
-    @Provides
-    @Singleton
-    Settings provideConfiguration() {
-        Settings settings = new Settings("../koh-realm/Settings.ini");
-
-        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-        Configuration config = ctx.getConfiguration();
-
-        if(settings.getBoolElement("Logging.Debug")) {
-            config.getRootLogger().removeAppender("Console");
-            config.getRootLogger().addAppender(config.getAppender("Console"),
-                    settings.getBoolElement("Logging.Debug") ? (Level.DEBUG) : (Level.INFO), null);
-
-            config.getLoggerConfig("RealmServer").addAppender(config.getAppender("Console"),
-                    Level.DEBUG, null);
-        }
-
-        ctx.updateLoggers(config);
-
-        return settings;
     }
 
 }

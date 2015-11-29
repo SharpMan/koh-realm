@@ -22,6 +22,10 @@ import koh.realm.intranet.InterPackage;
 import koh.realm.internet.RealmClient;
 import koh.realm.internet.RealmPackage;
 import koh.realm.utils.Settings;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -32,6 +36,12 @@ public class CoreModule extends AbstractModule {
 
     @Override
     protected void configure() {
+    }
+
+    @Provides
+    @Singleton
+    Settings provideConfiguration() {
+        return new Settings("../koh-realm/Settings.ini");
     }
 
     @InterPackage

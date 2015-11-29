@@ -1,9 +1,7 @@
 package koh.realm.internet;
 
-import com.google.inject.Binding;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
-import com.google.inject.Key;
 import koh.mina.MinaServer;
 import koh.mina.api.MinaListener;
 import koh.mina.api.annotations.Receive;
@@ -19,22 +17,20 @@ import koh.patterns.services.api.Service;
 import koh.protocol.client.Message;
 import koh.protocol.client.codec.Dofus2ProtocolDecoder;
 import koh.protocol.client.codec.Dofus2ProtocolEncoder;
-import koh.realm.app.DatabaseSource;
+import koh.realm.dao.DatabaseSource;
 import koh.realm.dao.api.AccountDAO;
 import koh.realm.dao.api.CharacterDAO;
 import koh.realm.dao.api.GameServerDAO;
 import koh.realm.intranet.InterServer;
 import koh.realm.utils.Settings;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.logging.log4j.*;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.core.write.WriteToClosedSessionException;
 
 import java.io.IOException;
-import java.util.Map;
+import java.util.function.Consumer;
 
-@DependsOn({GameServerDAO.class, AccountDAO.class, CharacterDAO.class, InterServer.class})
+@DependsOn({DatabaseSource.class, InterServer.class})
 public class RealmServer implements Service, MinaListener<RealmClient> {
 
     private static final Logger logger = LogManager.getLogger("RealmServer");
@@ -49,33 +45,25 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
      */
     private static final int MAX_READ_SIZE = 4096 + 0xFF;
 
-    private final MinaServer<RealmClient, Message> minaServer;
-    private final Settings settings;
-
-    private final ConsumerHandlerExecutor<RealmClient, Message> messagesExecutor;
-    private final SimpleHandlerExecutor<RealmClient> actionsExecutor;
-    private final EventExecutor eventsExecutor;
+    private MinaServer<RealmClient, Message> minaServer;
 
     @Inject
-    public RealmServer(Settings settings,
-                       @RealmPackage ConsumerHandlerExecutor<RealmClient, Message> messagesExecutor,
-                       EventExecutor eventsExecutor,
-                       @RealmPackage SimpleHandlerExecutor<RealmClient> actionsExecutor,
-                       Dofus2ProtocolDecoder decoder,
-                       Dofus2ProtocolEncoder encoder) {
+    private Settings settings;
 
-        this.messagesExecutor = messagesExecutor;
-        this.eventsExecutor = eventsExecutor;
-        this.actionsExecutor = actionsExecutor;
+    @Inject
+    private @RealmPackage ConsumerHandlerExecutor<RealmClient, Message> messagesExecutor;
 
-        this.settings = settings;
+    @Inject
+    private @RealmPackage SimpleHandlerExecutor<RealmClient> actionsExecutor;
 
-        //TODO set on CoreModule with @RealmPackage
-        this.minaServer = new MinaServer<>(this::newClient, actionsExecutor,
-                messagesExecutor, this, Message.class);
+    @Inject
+    private EventExecutor eventsExecutor;
 
-        minaServer.configure(decoder, encoder, DEFAULT_READ_SIZE, MAX_READ_SIZE, 30 * 60, false);
-    }
+    @Inject
+    private Dofus2ProtocolDecoder decoder;
+
+    @Inject
+    private Dofus2ProtocolEncoder encoder;
 
     private RealmClient newClient(IoSession session) {
         return new RealmClient(session, eventsExecutor);
@@ -83,6 +71,11 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
 
     @Override
     public void start() {
+        this.minaServer = new MinaServer<>(this::newClient, actionsExecutor,
+                messagesExecutor, this, Message.class);
+
+        minaServer.configure(decoder, encoder, DEFAULT_READ_SIZE, MAX_READ_SIZE, 30 * 60, false);
+
         try {
             minaServer.bind(settings.getStringElement("Login.Host"),
                     settings.getIntElement("Login.Port"));
@@ -105,12 +98,7 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
         if(exception instanceof WriteToClosedSessionException)
             return; //ignore
 
-        ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
-        try {
-            logger.error(EXC_MARKER, exception.getMessage(), exception);
-        } finally {
-            ThreadContext.remove("clientAddress");
-        }
+        client.log((logger) -> logger.error(EXC_MARKER, exception.getMessage(), exception));
     }
 
     private static final Marker MSG_SENT_MARKER = MarkerManager.getMarker("REALM_MSG_SENT");
@@ -120,12 +108,7 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
         if(message == null)
             return;
 
-        ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
-        try {
-            logger.debug(MSG_SENT_MARKER, message);
-        } finally {
-            ThreadContext.remove("clientAddress");
-        }
+        client.log((logger) -> logger.debug(MSG_SENT_MARKER, message));
     }
 
     private static final Marker MSG_RECVD_MARKER = MarkerManager.getMarker("REALM_MSG_RECV");
@@ -135,23 +118,14 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
         if(message == null)
             return;
 
-        ThreadContext.put("clientAddress", client.getRemoteAddress().getAddress().getHostAddress());
-        try {
-            logger.info(MSG_RECVD_MARKER, message);
-        } finally {
-            ThreadContext.remove("clientAddress");
-        }
+        client.log((logger) -> logger.info(MSG_RECVD_MARKER, message));
+
     }
 
     private static final String HANDLERS_PACKAGE = "koh.realm.internet.handlers";
 
     @Override
     public void inject(Injector injector) {
-        Map<Key<?>,Binding<?>> map = injector.getBindings();
-        for(Map.Entry<Key<?>, Binding<?>> e : map.entrySet()) {
-            System.out.println(e.getKey() + ": " + e.getValue());
-        }
-
         injector = new ControllersBinder(injector, HANDLERS_PACKAGE).bind();
 
         injector.createChildInjector(
