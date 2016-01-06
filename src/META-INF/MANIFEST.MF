@@ -1,0 +1,16 @@
+Manifest-Version: 1.0
+Class-Path: mysql.jar lombok.jar asm-5.0.3.jar cglib-3.1.jar guice-4.0
+ .jar javassist.jar guava-18.0.jar javax.inject.jar HikariCP-2.4.1.jar
+  aopalliance-1.0.jar mina-core-2.0.9.jar slf4j-api-1.6.1.jar commons-
+ lang-2.6.jar commons-codec-1.7.jar commons-lang3-3.3.2.jar reflection
+ s-0.9.9-RC1-uberjar.jar disruptor-3.3.2.jar log4j-api-2.4.1.jar log4j
+ -core-2.4.1.jar log4j-slf4j-impl-2.4.1.jar asm-5.0.3.jar cglib-3.1.ja
+ r guice-4.0.jar javassist.jar guava-18.0.jar javax.inject.jar aopalli
+ ance-1.0.jar mina-core-2.0.9.jar slf4j-api-1.6.1.jar commons-lang-2.6
+ .jar commons-codec-1.7.jar commons-lang3-3.3.2.jar guice-multibinding
+ s-4.0.jar reflections-0.9.9-RC1-uberjar.jar mysql.jar koh-d2i.jar gua
+ va-18.0.jar mina-core-2.0.9.jar slf4j-api-1.6.1.jar commons-lang-2.6.
+ jar commons-codec-1.7.jar javax.persistence.jar commons-lang3-3.3.2.jar lombok.jar guava-18.0.jar mina-core-2.0.9.ja
+ r slf4j-api-1.6.1.jar commons-lang-2.6.jar commons-codec-1.7.jar java
+ x.persistence.jar commons-lang3-3.3.2.jar
+Main-Class: koh.realm.Main

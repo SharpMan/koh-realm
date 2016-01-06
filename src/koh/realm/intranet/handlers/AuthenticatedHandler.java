@@ -21,8 +21,10 @@ import koh.realm.intranet.events.ServerStatusChangedEvent;
 import koh.realm.internet.RealmContexts;
 import koh.realm.internet.RealmServer;
 import koh.repositories.RepositoryReference;
+import lombok.extern.log4j.Log4j2;
 
 @RequireContexts(@Ctx(value = InterServerContexts.Authenticated.class))
+@Log4j2
 public class AuthenticatedHandler implements Controller {
 
     @Inject

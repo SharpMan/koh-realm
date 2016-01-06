@@ -84,6 +84,7 @@ public class RealmServer implements Service, MinaListener<RealmClient> {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
     }
 
     @Override

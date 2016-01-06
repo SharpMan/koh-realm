@@ -24,6 +24,7 @@ import koh.realm.entities.GameServer;
 import koh.realm.internet.AuthenticationToken;
 import koh.realm.internet.RealmClient;
 import koh.realm.internet.RealmContexts;
+import koh.realm.internet.RealmServer;
 import koh.realm.internet.events.ClientContextChangedEvent;
 import koh.realm.internet.events.ProgressChangedEvent;
 import koh.realm.intranet.events.ServerStatusChangedEvent;
@@ -184,6 +185,9 @@ public class WaitingHandler implements Controller {
             trans.write(serversListMessage);
         });
     }
+
+    @Inject
+    private RealmServer realmServer;
 
     private volatile PregenMessage serversListMessage;
     @Listen public void onStatusChanged(ServerStatusChangedEvent event) {

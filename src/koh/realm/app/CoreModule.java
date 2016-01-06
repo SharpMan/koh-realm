@@ -41,7 +41,7 @@ public class CoreModule extends AbstractModule {
     @Provides
     @Singleton
     Settings provideConfiguration() {
-        return new Settings("../koh-realm/Settings.ini");
+        return new Settings("/Settings.ini");
     }
 
     @InterPackage
