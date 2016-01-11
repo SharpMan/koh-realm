@@ -13,4 +13,6 @@ public abstract class BannedAddressDAO implements DAO<String, Long>, Service {
     public abstract Long get(String key);
 
     public abstract void add(String ip, long time);
+
+    public abstract void remove(String key);
 }

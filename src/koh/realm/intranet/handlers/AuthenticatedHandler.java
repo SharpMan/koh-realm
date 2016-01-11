@@ -1,9 +1,7 @@
 package koh.realm.intranet.handlers;
 
 import com.google.inject.Inject;
-import koh.inter.messages.PlayerAddressSuspendedMessage;
-import koh.inter.messages.PlayerCreatedMessage;
-import koh.inter.messages.PlayerSuspendedMessage;
+import koh.inter.messages.*;
 import koh.mina.api.annotations.Disconnect;
 import koh.mina.api.annotations.Receive;
 import koh.patterns.Controller;
@@ -42,6 +40,31 @@ public class AuthenticatedHandler implements Controller {
     @Receive
     public void onPlayerCreated(GameServerClient server, PlayerCreatedMessage message) throws Exception {
         characterDAO.insertOrUpdate(message.accountId, server.getEntity().ID, (short)message.currentCount);
+    }
+
+    @Receive
+    public void onAddressUnSuspended(GameServerClient server , AddressTookAwayMessage message){
+        RepositoryReference<Account> target = accountDAO.getAccount(message.accountId);
+        if(target == null) {
+            log.error("Fail to found the unsuspended account's ip {}", message.accountId);
+        }
+        else{
+            target.get().suspendedTime = 0;
+            accountDAO.updateBlame(target.get());
+            this.addressDAO.remove(target.get().lastIP);
+        }
+    }
+
+    @Receive
+    public void onPlayerUnSuspended(GameServerClient server , AccountTookAwayMessage message) throws Exception{
+        RepositoryReference<Account> target = accountDAO.getAccount(message.accountId);
+        if(target == null) {
+            log.error("Fail to found the unsuspended account {}", message.accountId);
+        }
+        else{
+            target.get().suspendedTime = 0;
+            accountDAO.updateBlame(target.get());
+        }
     }
 
     @Receive

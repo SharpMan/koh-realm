@@ -73,6 +73,25 @@ public class BannedAddresDAOImp extends BannedAddressDAO {
         return 0;
     }
 
+    private static final String REMOVE_BY_IP = "DELETE FROM `suspended_address` WHERE address = ?;";
+
+    @Override
+    public void remove(String key){
+        this.addresses.entrySet().stream()
+                .filter(en -> en.getKey().equalsIgnoreCase("key"))
+                .forEach(en -> {
+                        this.addresses.remove(en.getKey());
+                    try (ConnectionStatement<PreparedStatement> conn = dbSource.prepareStatement(REMOVE_BY_IP)){
+                        PreparedStatement stmt = conn.getStatement();
+                        stmt.setString(1, en.getKey());
+                        stmt.executeUpdate();
+                    } catch (Exception e) {
+                        logger.error(e);
+                        logger.warn(e.getMessage());
+                    }
+                });
+    }
+
     @Override
     public void start() {
         logger.info(this.loadAll() + " Suspended IPs loaded ");
