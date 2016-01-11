@@ -72,8 +72,8 @@ public class RealmClient extends MinaClient {
     public void log(Consumer<Logger> writer) {
         ThreadContext.put("clientAddress", this.getRemoteAddress().getAddress().getHostAddress());
         if(account != null && account.loaded()) {
-            ThreadContext.put("accountName", account.get().Username);
-            ThreadContext.put("accountId", Integer.toString(account.get().ID));
+            ThreadContext.put("accountName", account.get().username);
+            ThreadContext.put("accountId", Integer.toString(account.get().id));
         }
         try {
             writer.accept(logger);

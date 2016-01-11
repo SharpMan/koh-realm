@@ -9,9 +9,11 @@ import koh.patterns.services.api.Service;
 import koh.realm.app.Loggers;
 import koh.realm.app.MemoryService;
 import koh.realm.dao.api.AccountDAO;
+import koh.realm.dao.api.BannedAddressDAO;
 import koh.realm.dao.api.CharacterDAO;
 import koh.realm.dao.api.GameServerDAO;
 import koh.realm.dao.impl.AccountDAOImpl;
+import koh.realm.dao.impl.BannedAddresDAOImp;
 import koh.realm.dao.impl.CharacterDAOImpl;
 import koh.realm.dao.impl.GameServerDAOImpl;
 import koh.realm.utils.Settings;
@@ -36,12 +38,14 @@ public class DatabaseSource implements Service {
         binder.bind(AccountDAO.class).to(AccountDAOImpl.class).asEagerSingleton();
         binder.bind(CharacterDAO.class).to(CharacterDAOImpl.class).asEagerSingleton();
         binder.bind(GameServerDAO.class).to(GameServerDAOImpl.class).asEagerSingleton();
+        binder.bind(BannedAddressDAO.class).to(BannedAddresDAOImp.class).asEagerSingleton();
     }
 
     @Inject private Settings settings;
     @Inject private AccountDAO accounts;
     @Inject private CharacterDAO characters;
     @Inject private GameServerDAO servers;
+    @Inject private BannedAddressDAO addresses;
 
     private HikariDataSource dataSource;
 
@@ -64,6 +68,7 @@ public class DatabaseSource implements Service {
         accounts.start();
         servers.start();
         characters.start();
+        addresses.start();
     }
 
     @Override
@@ -71,6 +76,7 @@ public class DatabaseSource implements Service {
         accounts.stop();
         servers.stop();
         characters.stop();
+        addresses.stop();
 
         if(dataSource != null)
             dataSource.close();

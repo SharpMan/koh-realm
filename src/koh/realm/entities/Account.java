@@ -14,16 +14,16 @@ import koh.repositories.InUseCheckable;
  */
 public class Account implements InUseCheckable {
 
-    public Map<Short, Byte> Characters = new HashMap<>();
+    public Map<Short, Byte> characters = new HashMap<>();
 
-    public int ID;
-    public String Username;
-    public String SHA_HASH, Password;
-    public String NickName;
-    public byte Right;
-    public String SecretQuestion, SecretAnswer, LastIP;
+    public int id;
+    public String username;
+    public String SHA_HASH, password;
+    public String nickName;
+    public byte right;
+    public String secretQuestion, secretAnswer, lastIP;
     public Timestamp last_login;
-    public long SuspendedTime;
+    public long suspendedTime;
 
     public RealmClient getClient() {
         return client;
@@ -36,31 +36,26 @@ public class Account implements InUseCheckable {
     public RealmClient client;
 
     public boolean isValidPass(String Pass) {
-        return Password.equals(generateHash(SHA_HASH + Key + Pass));
+        return password.equals(generateHash(SHA_HASH + KEY + Pass));
     }
 
     public byte getPlayers(short server) {
-        Byte count = Characters.get(server);
+        Byte count = characters.get(server);
         return count == null ? 0 : count;
     }
 
-    public boolean isBanned() { //TODO: Banip
-        if (SuspendedTime == -1) {
+    public boolean isBanned() {
+        if (suspendedTime == -1) {
             return true;
         }
-        if (SuspendedTime < (long) System.currentTimeMillis() / 1000) {
-            SuspendedTime = 0;
-            //FIXME SAVE NewTime Maybe ?
+        if (suspendedTime == 0 || suspendedTime <  System.currentTimeMillis()) {
             return false;
         }
         return true;
     }
 
-    public int getDaysNumberBanned() {
-        return (int) ((SuspendedTime - ((long) System.currentTimeMillis() / 1000)) / (24 * 3600));
-    }
 
-    public static final String Key = "!@#$%^&*()_+=-{}][;\";/?<>.,";
+    public static final String KEY = "!@#$%^&*()_+=-{}][;\";/?<>.,";
 
     public static String generateHash(String toHash) {
         byte[] hash = null;

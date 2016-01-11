@@ -8,7 +8,6 @@ import koh.mina.api.annotations.Receive;
 import koh.patterns.Controller;
 import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
-import koh.patterns.services.api.ServiceDependency;
 import koh.protocol.client.PregenMessage;
 import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.protocol.client.enums.IdentificationFailureReason;
@@ -25,9 +24,6 @@ import koh.realm.entities.GameServer;
 import koh.realm.internet.RealmClient;
 import koh.realm.internet.RealmContexts;
 import koh.realm.utils.Util;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.ThreadContext;
 import org.apache.mina.core.buffer.IoBuffer;
 
 import java.sql.Timestamp;
@@ -74,7 +70,7 @@ public class AuthenticatedHandler implements Controller {
                     server.getStatus()));
             return;
         }
-        if (server.RequiredRole > client.getAccount().get().Right) {
+        if (server.RequiredRole > client.getAccount().get().right) {
             client.write(new SelectedServerRefusedMessage(message.getServerId(), ServerConnectionError.ACCOUNT_RESTRICTED,
                     server.getStatus()));
             return;
@@ -84,10 +80,10 @@ public class AuthenticatedHandler implements Controller {
         String ticket = Util.genTicketID(32).toString();
 
         server.getClient().write(new PlayerComingMessage(ticket, client.getRemoteAddress().getAddress().toString(),
-                acc.ID, acc.NickName, acc.SecretQuestion, acc.SecretAnswer, acc.LastIP, acc.Right, acc.last_login));
+                acc.id, acc.nickName, acc.secretQuestion, acc.secretAnswer, acc.lastIP, acc.right, acc.last_login));
 
         client.getAccount().sync(() -> {
-            acc.LastIP = client.getRemoteAddress().getAddress().getHostAddress();
+            acc.lastIP = client.getRemoteAddress().getAddress().getHostAddress();
             acc.last_login = Timestamp.from(Instant.now());
             accountDAO.save(acc);
         });

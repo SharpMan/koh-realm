@@ -16,7 +16,6 @@ import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 /**
  *
@@ -34,7 +33,7 @@ public class AccountDAOImpl extends AccountDAO {
     private @ServiceDependency("RealmServices") DatabaseSource dbSource;
 
     public AccountDAOImpl() {
-        this.accounts = new BiRecyclingRepository<>((acc) -> acc.ID, (acc) -> acc.Username,
+        this.accounts = new BiRecyclingRepository<>((acc) -> acc.id, (acc) -> acc.username,
                 this::loadById, this::loadByUsername,
                 this::save, (val) -> val, String::toLowerCase,
                 RECYCLE_MINS, TimeUnit.MINUTES);
@@ -50,6 +49,26 @@ public class AccountDAOImpl extends AccountDAO {
         return accounts.getReferenceBySecond(name);
     }
 
+
+
+    private static final String UPDATE_SUSPENSION_BY_ID = "UPDATE `account` SET suspended_time = ? WHERE id = ?;";
+
+    @Override
+    public void updateBlame(Account acc) {
+        try (ConnectionStatement<PreparedStatement> conn = dbSource.prepareStatement(UPDATE_SUSPENSION_BY_ID)){
+            PreparedStatement stmt = conn.getStatement();
+            stmt.setLong(1, acc.suspendedTime);
+            stmt.setInt(2, acc.id);
+
+            stmt.execute();
+
+            logger.debug("Account [{}] {} suspension time saved", acc.id, acc.username);
+        } catch (Exception e) {
+            logger.error(e);
+            logger.warn(e.getMessage());
+        }
+    }
+
     private final static String UPDATE_BY_ID = "UPDATE `account` SET last_login = ? , last_ip = ? WHERE id = ?;";
 
     @Override
@@ -57,12 +76,12 @@ public class AccountDAOImpl extends AccountDAO {
         try (ConnectionStatement<PreparedStatement> conn = dbSource.prepareStatement(UPDATE_BY_ID)){
             PreparedStatement stmt = conn.getStatement();
             stmt.setTimestamp(1, acc.last_login);
-            stmt.setString(2, acc.LastIP);
-            stmt.setInt(3, acc.ID);
+            stmt.setString(2, acc.lastIP);
+            stmt.setInt(3, acc.id);
 
             stmt.execute();
 
-            logger.debug("Account [{}] {} saved", acc.ID, acc.Username);
+            logger.debug("Account [{}] {} saved", acc.id, acc.username);
         } catch (Exception e) {
             logger.error(e);
             logger.warn(e.getMessage());
@@ -81,11 +100,11 @@ public class AccountDAOImpl extends AccountDAO {
             "LEFT JOIN worlds_characters on account.id = worlds_characters.owner " +
             "WHERE account.username = ?;";
 
-    public Account loadByUsername(String Username) {
+    public Account loadByUsername(String username) {
         try (ConnectionStatement<PreparedStatement> conn = dbSource.prepareStatement(QUERY_BY_USERNAME)) {
 
             PreparedStatement stmt = conn.getStatement();
-            stmt.setString(1, Username);
+            stmt.setString(1, username);
 
             ResultSet RS = stmt.executeQuery();
 
@@ -94,15 +113,16 @@ public class AccountDAOImpl extends AccountDAO {
 
             return new Account() {
                 {
-                    ID = RS.getInt("id");
-                    Username = RS.getString("username");
+                    id = RS.getInt("id");
+                    username = RS.getString("username");
                     SHA_HASH = RS.getString("sha_pass_hash");
-                    Password = RS.getString("password");
-                    NickName = RS.getString("nickname");
-                    Right = RS.getByte("rights");
-                    SecretQuestion = RS.getString("secret_question");
-                    SecretAnswer = RS.getString("secret_answer");
-                    LastIP = RS.getString("last_ip");;
+                    password = RS.getString("password");
+                    nickName = RS.getString("nickname");
+                    suspendedTime = RS.getLong("suspended_time");
+                    right = RS.getByte("rights");
+                    secretQuestion = RS.getString("secret_question");
+                    secretAnswer = RS.getString("secret_answer");
+                    lastIP = RS.getString("last_ip");;
                     try {
                         last_login = RS.getTimestamp("last_login");
                     } catch (Exception e) {
@@ -113,7 +133,7 @@ public class AccountDAOImpl extends AccountDAO {
                         String[] players = RS.getString("players").split(",");
 
                         for (int i = 0; i < RS.getString("servers").split(",").length; i++)
-                            Characters.put(Short.parseShort(servers[i]), Byte.parseByte(players[i]));
+                            characters.put(Short.parseShort(servers[i]), Byte.parseByte(players[i]));
                     }
                 }
             };
@@ -148,15 +168,15 @@ public class AccountDAOImpl extends AccountDAO {
 
             return new Account() {
                 {
-                    ID = RS.getInt("id");
-                    Username = RS.getString("username");
+                    id = RS.getInt("id");
+                    username = RS.getString("username");
                     SHA_HASH = RS.getString("sha_pass_hash");
-                    Password = RS.getString("password");
-                    NickName = RS.getString("nickname");
-                    Right = RS.getByte("rights");
-                    SecretQuestion = RS.getString("secret_question");
-                    SecretAnswer = RS.getString("secret_answer");
-                    LastIP = RS.getString("last_ip");
+                    password = RS.getString("password");
+                    nickName = RS.getString("nickname");
+                    right = RS.getByte("rights");
+                    secretQuestion = RS.getString("secret_question");
+                    secretAnswer = RS.getString("secret_answer");
+                    lastIP = RS.getString("last_ip");
                     ;
                     try {
                         last_login = RS.getTimestamp("last_login");
@@ -168,7 +188,7 @@ public class AccountDAOImpl extends AccountDAO {
                         String[] players = RS.getString("players").split(",");
 
                         for (int i = 0; i < RS.getString("servers").split(",").length; i++)
-                            Characters.put(Short.parseShort(servers[i]), Byte.parseByte(players[i]));
+                            characters.put(Short.parseShort(servers[i]), Byte.parseByte(players[i]));
                     }
                 }
             };

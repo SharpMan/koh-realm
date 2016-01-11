@@ -16,6 +16,8 @@ public abstract class AccountDAO implements DAO<String, Account>, Service {
 
     public abstract RepositoryReference<Account> getAccount(String name);
 
+    public abstract void updateBlame(Account acc);
+
     public abstract void save(Account acc);
 
     public abstract RepositoryReference<Account> getLoadedAccount(int guid);

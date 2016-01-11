@@ -9,15 +9,12 @@ import koh.patterns.event.EventExecutor;
 import koh.patterns.event.api.Listen;
 import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
-import koh.patterns.services.api.ServiceDependency;
 import koh.protocol.client.*;
 import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.protocol.client.enums.IdentificationFailureReason;
-import koh.protocol.messages.connection.IdentificationFailedMessage;
-import koh.protocol.messages.connection.IdentificationSuccessMessage;
-import koh.protocol.messages.connection.LoginQueueStatusMessage;
-import koh.protocol.messages.connection.ServersListMessage;
+import koh.protocol.messages.connection.*;
 import koh.realm.dao.api.AccountDAO;
+import koh.realm.dao.api.BannedAddressDAO;
 import koh.realm.dao.api.GameServerDAO;
 import koh.realm.entities.Account;
 import koh.realm.entities.GameServer;
@@ -29,9 +26,6 @@ import koh.realm.internet.events.ClientContextChangedEvent;
 import koh.realm.internet.events.ProgressChangedEvent;
 import koh.realm.intranet.events.ServerStatusChangedEvent;
 import koh.repositories.RepositoryReference;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.ThreadContext;
 import org.apache.mina.core.buffer.IoBuffer;
 
 import java.time.Instant;
@@ -45,7 +39,6 @@ public class WaitingHandler implements Controller {
     private final GameServerDAO serverDAO;
 
     private final PregenMessage wrongCredentialsMessage;
-    private final PregenMessage bannedMessage;
     private final PregenMessage alreadyConnectedMessage;
     private final PregenMessage maintenanceMessage;
     private final PregenMessage endQueueMessage;
@@ -57,9 +50,6 @@ public class WaitingHandler implements Controller {
 
         this.wrongCredentialsMessage = new PregenMessage(
                 encoder.encodeMessage(new IdentificationFailedMessage(IdentificationFailureReason.WRONG_CREDENTIALS), IoBuffer.allocate(16))
-        );
-        this.bannedMessage = new PregenMessage(
-                encoder.encodeMessage(new IdentificationFailedMessage(IdentificationFailureReason.BANNED), IoBuffer.allocate(16))
         );
         this.alreadyConnectedMessage = new PregenMessage(
                 encoder.encodeMessage(new IdentificationFailedMessage(IdentificationFailureReason.TOO_MANY_ON_IP), IoBuffer.allocate(16))
@@ -78,6 +68,7 @@ public class WaitingHandler implements Controller {
 
     private @Inject EventExecutor eventsEmitter;
     private @Inject AccountDAO accountDAO;
+    private @Inject BannedAddressDAO addressDAO;
 
     @Listen
     public void onContextChanged(ClientContextChangedEvent event) {
@@ -140,11 +131,19 @@ public class WaitingHandler implements Controller {
                 }
 
                 if(loadedAccount.get().client != null) {
+                    if(addressDAO.isBanned(client.getRemoteAddress().getAddress().toString())){
+                        throw new LambdaException(() -> {
+                            client.disconnect(new IdentificationFailedBannedMessage(IdentificationFailureReason.BANNED,loadedAccount.get().suspendedTime));
+                            loadedAccount.get().getClient().disconnect(
+                                    new MessageQueue(endQueueMessage, new IdentificationFailedBannedMessage(IdentificationFailureReason.BANNED, addressDAO.get(client.getRemoteAddress().getAddress().toString())))
+                            );
+                        });
+                    }
                     if(loadedAccount.get().isBanned()) {
                         throw new LambdaException(() -> {
-                            client.disconnect(bannedMessage);
+                            client.disconnect(new IdentificationFailedBannedMessage(IdentificationFailureReason.BANNED,loadedAccount.get().suspendedTime));
                             loadedAccount.get().getClient().disconnect(
-                                    new MessageQueue(endQueueMessage, bannedMessage)
+                                    new MessageQueue(endQueueMessage, new IdentificationFailedBannedMessage(IdentificationFailureReason.BANNED, loadedAccount.get().suspendedTime))
                             );
                         });
                     }
@@ -154,9 +153,15 @@ public class WaitingHandler implements Controller {
                     });
                 }
 
+                if(addressDAO.isBanned(client.getRemoteAddress().getAddress().toString())){
+                    throw new LambdaException(() -> client.disconnect(
+                            new MessageQueue(endQueueMessage, new IdentificationFailedBannedMessage(IdentificationFailureReason.BANNED, addressDAO.get(client.getRemoteAddress().getAddress().toString())))
+                    ));
+                }
+
                 if(loadedAccount.get().isBanned()) {
                     throw new LambdaException(() -> client.disconnect(
-                            new MessageQueue(endQueueMessage, bannedMessage)
+                            new MessageQueue(endQueueMessage, new IdentificationFailedBannedMessage(IdentificationFailureReason.BANNED, loadedAccount.get().suspendedTime))
                     ));
                 }
 
@@ -178,8 +183,8 @@ public class WaitingHandler implements Controller {
         client.transact((trans) -> {
             trans.write(endQueueMessage);
 
-            trans.write(new IdentificationSuccessMessage(acc.Username, acc.NickName, acc.ID,
-                    /*Community*/ 0, acc.Right > 0, acc.SecretQuestion,
+            trans.write(new IdentificationSuccessMessage(acc.username, acc.nickName, acc.id,
+                    /*Community*/ 0, acc.right > 0, acc.secretQuestion,
                     Instant.now().plus(365, ChronoUnit.DAYS).toEpochMilli() , false));
 
             trans.write(serversListMessage);
