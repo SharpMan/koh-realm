@@ -1,15 +1,11 @@
 package koh.realm.entities;
 
-import koh.inter.InterMessage;
-import koh.inter.MessageEnum;
-import koh.inter.messages.PlayerCreatedMessage;
+import koh.protocol.client.PregenMessage;
+import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.protocol.client.enums.ServerStatusEnum;
 import koh.protocol.client.types.GameServerInformations;
-import koh.protocol.messages.connection.ServerStatusUpdateMessage;
-import koh.realm.Main;
-import koh.realm.dao.api.CharacterDAO;
-import koh.realm.dao.impl.CharacterDAOImpl;
-import org.apache.mina.core.session.IoSession;
+import koh.realm.intranet.GameServerClient;
+import koh.realm.intranet.events.ServerStatusChangedEvent;
 
 /**
  *
@@ -18,63 +14,50 @@ import org.apache.mina.core.session.IoSession;
 public class GameServer {
 
     public short ID;
-    public String Name, Adress, Hash;
+    public String Name, Address, Hash;
     public short Port;
     public byte RequiredRole;
-    public ServerStatusEnum State = ServerStatusEnum.OFFLINE;
 
-    public IoSession session;
+    private volatile ServerStatusEnum status = ServerStatusEnum.OFFLINE;
+    private GameServerClient client;
 
-    public void parsePacket(InterMessage message) {
-        if (message == null) {
-            return;
-        }
-        switch (MessageEnum.valueOf(message.getMessageId())) {
-            case HelloMessage:
-                break;
-            case PlayerCommingMessage:
-                break;
-            case ExpulseAccount:
-                break;
-            case PlayerCreated:
-                //CharacterDAO.get().insertOrUpdate(((PlayerCreatedMessage) message).Owner, ID, (short)((PlayerCreatedMessage) message).Count);
-                return;
-        }
-
+    public GameServerClient getClient() {
+        return client;
     }
 
-    public void setState(ServerStatusEnum State) {
-        this.State = State;
-        //Main.RealmServer().SendPacket(new ServerStatusUpdateMessage(new GameServerInformations(ID, State, (byte) (State == ServerStatusEnum.FULL ? 1 : 0), true, (byte) 1, 0)));
+    public void setClient(GameServerClient client) {
+        this.client = client;
     }
 
-    /**
-     * 
-     * @param packet
-     */
-    public void sendPacket(InterMessage packet) {
-        if (packet == null || session == null || !session.isConnected()) {
-            return;
-        }
-        session.write(packet);
+    public ServerStatusEnum getStatus() {
+        return status;
     }
 
-    public void timeOut() {
-        close();
+    public void setStatus(ServerStatusEnum status) {
+        if(status != this.status)
+            this.informations = new GameServerInformations(
+                    ID, status, (byte) (status == ServerStatusEnum.FULL ? 1 : 0), true, (byte) 1, 0
+            );
+
+        this.status = status;
+
+        if (client != null)
+            client.emit(new ServerStatusChangedEvent(client, this));
     }
 
-    public void onConnected(IoSession session) {
-        this.session = session;
-        setState(ServerStatusEnum.ONLINE);
-        System.out.println("[INFOS] GameServer " + Name + " Online");
+    public void setOffline() {
+        setStatus(ServerStatusEnum.OFFLINE);
+        this.client = null;
     }
 
-    public void close() {
-        if (!session.isConnected()) {
-            session.close(true);
-            this.session = null;
-            setState(ServerStatusEnum.OFFLINE);
-        }
+    private volatile GameServerInformations informations;
+    //TODO uncache them cauz depends on account(characters count per server)
+    public GameServerInformations toInformations() {
+        if(informations == null)
+            this.informations = new GameServerInformations(
+                    ID, status, (byte) (status == ServerStatusEnum.FULL ? 1 : 0), true, (byte) 1, 0
+            );
+        return informations;
     }
 
 }

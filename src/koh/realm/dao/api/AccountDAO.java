@@ -1,30 +1,25 @@
 package koh.realm.dao.api;
 
-import com.google.inject.Singleton;
+import com.google.inject.ImplementedBy;
+import koh.patterns.services.api.DependsOn;
+import koh.patterns.services.api.Service;
+import koh.realm.dao.DatabaseSource;
 import koh.realm.dao.DAO;
 import koh.realm.dao.impl.AccountDAOImpl;
-import koh.realm.dao.AccountReference;
 import koh.realm.entities.Account;
-import koh.realm.network.RealmLoader;
+import koh.repositories.RepositoryReference;
 
-import java.util.Collection;
+@DependsOn(DatabaseSource.class)
+public abstract class AccountDAO implements DAO<String, Account>, Service {
 
-public abstract class AccountDAO implements DAO<String, Account> {
+    public abstract RepositoryReference<Account> getAccount(int guid);
 
-    public abstract RealmLoader getLoader();
+    public abstract RepositoryReference<Account> getAccount(String name);
 
-    public abstract Collection<Account> getAccounts();
-
-    public abstract void removeAccount(Account c);
-
-    public abstract AccountReference getCompte(int guid);
-
-    public abstract AccountReference getCompteByName(String name);
-
-    public abstract void addAccount(Account compte);
-
-    public abstract AccountReference initReference(Account acc);
+    public abstract void updateBlame(Account acc);
 
     public abstract void save(Account acc);
+
+    public abstract RepositoryReference<Account> getLoadedAccount(int guid);
 
 }

@@ -1,12 +1,14 @@
 package koh.realm;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import koh.realm.inter.InterServer;
-import koh.realm.network.RealmServer;
-
-import java.util.ArrayList;
-import java.util.List;
+import koh.patterns.services.ServicesProvider;
+import koh.realm.app.AppModule;
+import koh.realm.app.Loggers;
+import koh.realm.dao.DatabaseSource;
+import koh.realm.app.MemoryService;
+import koh.realm.internet.RealmServer;
+import koh.realm.intranet.InterServer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  *
@@ -14,67 +16,28 @@ import java.util.List;
  */
 public class Main {
 
-    public static int MIN_TIMEOUT = 30;
-    private static boolean running;
-    public static final String binaryKey = "key.dat";
-    public static final String salt = "hk2zaar9desn'@CD\"G84vF&zEK\")DT!U";
-    public static final String bypassPacket = "StumpPatch.swf";
-
-
-    private static final List<Runnable> runnableList = new ArrayList<>();
-
-    public static void onShutdown(Runnable runnable) {
-        runnableList.add(runnable);
-    }
+    private static final Logger logger = LogManager.getLogger(Main.class);
 
     public static void main(String[] args) {
         try {
-            registerShutdownHook(() -> {
-                for(int i=runnableList.size()-1; i > 0; --i) {
-                    try {
-                        runnableList.get(i).run();
-                    }catch(Throwable tr) {
-                        tr.printStackTrace();
-                    }
-                }
-            });
 
-            long time = System.currentTimeMillis();
+            AppModule app = new AppModule();
+            ServicesProvider services = app.create(
+                    new DatabaseSource(),
+                    new MemoryService(),
 
-            Injector guice = Guice.createInjector();
-            Injector appModule = guice.createChildInjector(new RealmModule(guice));
+                    new RealmServer(),
+                    new InterServer(),
 
-            appModule.getInstance(InterServer.class)
-                    .configure().launch();
+                    new Loggers()
+            );
 
-            appModule.getInstance(RealmServer.class)
-                    .configure().launch();
-
-            running = true;
-
-            appModule.getInstance(Logs.class)
-                    .writeInfo("RealmServer start in " + (System.currentTimeMillis() - time) + " ms.");
+            services.start(app.resolver());
 
         } catch (Exception e) {
-            System.out.println(e.getMessage());
-            e.printStackTrace();
+            logger.fatal(e);
+            logger.error(e.getMessage());
         }
-    }
-
-    public static boolean isRunning() {
-        return running;
-    }
-
-    private static void registerShutdownHook(Runnable runnable) {
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-
-            @Override
-            public void run() {
-                if(runnable != null)
-                    runnable.run();
-            }
-
-        });
     }
 
 }

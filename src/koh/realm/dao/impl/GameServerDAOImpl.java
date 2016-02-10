@@ -1,16 +1,19 @@
 package koh.realm.dao.impl;
 
 import com.google.inject.Inject;
-import koh.realm.DatabaseSource;
-import koh.realm.Logs;
+import koh.patterns.services.api.ServiceDependency;
+import koh.realm.dao.DatabaseSource;
 import koh.realm.dao.api.GameServerDAO;
 import koh.realm.entities.GameServer;
 import koh.realm.utils.sql.ConnectionResult;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.sql.ResultSet;
-import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  *
@@ -18,16 +21,12 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class GameServerDAOImpl extends GameServerDAO {
 
+    private static final Logger logger = LogManager.getLogger(GameServerDAO.class);
+
     private final Map<Short, GameServer> gameServers = new ConcurrentHashMap<>();
 
-    private final DatabaseSource dbSource;
-
     @Inject
-    public GameServerDAOImpl(DatabaseSource dbSource, Logs logs) {
-        this.dbSource = dbSource;
-
-        logs.writeInfo(this.loadAll() + " WorldServers loaded ");
-    }
+    private @ServiceDependency("RealmServices") DatabaseSource dbSource;
 
     private static final String FIND_ALL = "SELECT * from realmlist;";
 
@@ -39,7 +38,7 @@ public class GameServerDAOImpl extends GameServerDAO {
                 addGameServer(new GameServer() {
                     {
                         ID = cursor.getShort("id");
-                        Adress = cursor.getString("address");
+                        Address = cursor.getString("address");
                         Name = cursor.getString("name");
                         Port = cursor.getShort("port");
                         RequiredRole = cursor.getByte("requiredRole");
@@ -49,8 +48,8 @@ public class GameServerDAOImpl extends GameServerDAO {
 
             return gameServers.size();
         } catch (Exception e) {
-            System.err.println(e.getMessage());
-            e.printStackTrace();
+            logger.error(e);
+            logger.warn(e.getMessage());
         }
         return 0;
     }
@@ -58,24 +57,32 @@ public class GameServerDAOImpl extends GameServerDAO {
     @Override
     public GameServer getByHash(String hash) {
         for (GameServer a : gameServers.values())
-            if (a.Hash.equalsIgnoreCase(hash))
+            if (a.Hash.equals(hash))
                 return a;
         return null;
     }
 
     @Override
-    public Collection<GameServer> getGameServers() {
-        return gameServers.values();
+    public Stream<GameServer> getGameServers() {
+        return gameServers.values().stream();
     }
 
     @Override
     public void addGameServer(GameServer server) {
-        gameServers.remove(server.ID);
         gameServers.put(server.ID, server);
     }
 
     @Override
     public GameServer getByKey(Short guid) throws Exception {
         return gameServers.get(guid);
+    }
+
+    @Override
+    public void start() {
+        logger.info(this.loadAll() + " WorldServers loaded ");
+    }
+
+    @Override
+    public void stop() {
     }
 }

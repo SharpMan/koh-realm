@@ -4,65 +4,63 @@ import java.security.MessageDigest;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
-import koh.realm.network.RealmClient;
+
+import koh.realm.internet.RealmClient;
+import koh.repositories.InUseCheckable;
 
 /**
  *
  * @author Neo-Craft
  */
-public class Account {
+public class Account implements InUseCheckable {
 
-    public static boolean COMPTE_LOGIN(Account to_compare, String name, String pass) {
-        return to_compare != null
-                && to_compare.isValidPass(pass);
+    public Map<Short, Byte> characters = new HashMap<>();
+
+    public int id;
+    public String username;
+    public String SHA_HASH, password;
+    public String nickName;
+    public byte right;
+    public String secretQuestion, secretAnswer, lastIP;
+    public Timestamp last_login;
+    public long suspendedTime;
+
+    public RealmClient getClient() {
+        return client;
     }
 
-    public Map<Short, Byte> Characters = new HashMap<>();
+    public void setClient(RealmClient client) {
+        this.client = client;
+    }
 
-    public int ID;
-    public String Username;
-    public String SHA_HASH, Password;
-    public String NickName;
-    public byte Right;
-    public String SecretQuestion, SecretAnswer, LastIP;
-    public Timestamp last_login;
-    public long SuspendedTime;
-    public RealmClient Client;
+    public RealmClient client;
 
     public boolean isValidPass(String Pass) {
-        return Password.equals(generateHash(SHA_HASH + Key + Pass));
+        return password.equals(generateHash(SHA_HASH + KEY + Pass));
     }
 
     public byte getPlayers(short server) {
-        if (Characters.containsKey(server)) {
-            return Characters.get(server);
-        }
-        return 0;
+        Byte count = characters.get(server);
+        return count == null ? 0 : count;
     }
 
-    public boolean isBanned() { //TODO: Banip
-        if (SuspendedTime == -1) {
+    public boolean isBanned() {
+        if (suspendedTime == -1) {
             return true;
         }
-        if (SuspendedTime < (long) System.currentTimeMillis() / 1000) {
-            SuspendedTime = 0;
-            //FIXME SAVE NewTime Maybe ?
+        if (suspendedTime == 0 || suspendedTime <  System.currentTimeMillis()) {
             return false;
         }
         return true;
     }
 
-    public int getDaysNumberBanned() {
-        return (int) ((SuspendedTime - ((long) System.currentTimeMillis() / 1000)) / (24 * 3600));
-    }
 
-    public static final String Key = "!@#$%^&*()_+=-{}][;\";/?<>.,";
+    public static final String KEY = "!@#$%^&*()_+=-{}][;\";/?<>.,";
 
     public static String generateHash(String toHash) {
-        MessageDigest md = null;
         byte[] hash = null;
         try {
-            md = MessageDigest.getInstance("SHA-512");
+            MessageDigest md = MessageDigest.getInstance("SHA-512");
             hash = md.digest(toHash.getBytes("UTF-8"));
         } catch (Exception e) {
             e.printStackTrace();
@@ -84,25 +82,8 @@ public class Account {
         return sb.toString();
     }
 
-    public void totalClear() {
-        try{
-            Characters.clear();
-            Characters = null;
-            ID = 0;
-            Username = null;
-            SHA_HASH = null;
-            Password = null;
-            NickName = null;
-            Right = 0;
-            SecretQuestion = null;
-            SecretAnswer = null;
-            LastIP = null;
-            last_login = null;
-            SuspendedTime = 0;
-            Client = null;
-            this.finalize();
-        }
-        catch(Throwable ignored){ }
+    @Override
+    public boolean inUse() {
+        return client != null && client.connected();
     }
-
 }

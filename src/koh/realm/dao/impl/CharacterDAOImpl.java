@@ -1,11 +1,15 @@
 package koh.realm.dao.impl;
 
 import com.google.inject.Inject;
-import koh.realm.DatabaseSource;
+import koh.patterns.services.api.ServiceDependency;
+import koh.realm.dao.DatabaseSource;
 import koh.realm.dao.api.CharacterDAO;
 import koh.realm.utils.sql.ConnectionStatement;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.sql.PreparedStatement;
+import java.util.function.Consumer;
 
 /**
  *
@@ -13,12 +17,10 @@ import java.sql.PreparedStatement;
  */
 public class CharacterDAOImpl extends CharacterDAO {
 
-    private final DatabaseSource dbSource;
+    private static final Logger logger = LogManager.getLogger(CharacterDAO.class);
 
     @Inject
-    public CharacterDAOImpl(DatabaseSource dbSource) {
-        this.dbSource = dbSource;
-    }
+    private @ServiceDependency("RealmServices") DatabaseSource dbSource;
 
     private static final String REPLACE_BY_OWNER = "REPLACE INTO `worlds_characters` VALUES (?,?,?);";
 
@@ -30,13 +32,24 @@ public class CharacterDAOImpl extends CharacterDAO {
             stmt.setShort(3, number);
             return stmt.executeUpdate() > 0;
         } catch (Exception e) {
-            e.printStackTrace();
-            return false;
+            logger.error(e);
+            logger.warn(e.getMessage());
         }
+        return false;
     }
 
     @Override
     public Object getByKey(Integer key) throws Exception {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void start() {
+
+    }
+
+    @Override
+    public void stop() {
+
     }
 }

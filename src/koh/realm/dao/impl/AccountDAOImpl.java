@@ -1,24 +1,21 @@
 package koh.realm.dao.impl;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.*;
-
 import com.google.inject.Inject;
-import koh.realm.DatabaseSource;
-import koh.realm.Main;
-import koh.realm.dao.AccountReference;
+import koh.patterns.services.api.ServiceDependency;
+import koh.realm.dao.DatabaseSource;
 import koh.realm.dao.api.AccountDAO;
 import koh.realm.entities.Account;
-import koh.realm.network.RealmLoader;
 import koh.realm.utils.sql.ConnectionStatement;
+import koh.repositories.BiRecyclingRepository;
+import koh.repositories.RepositoryReference;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -26,71 +23,50 @@ import koh.realm.utils.sql.ConnectionStatement;
  */
 public class AccountDAOImpl extends AccountDAO {
 
-    private final DatabaseSource dbSource;
+    private static final Logger logger = LogManager.getLogger(AccountDAO.class);
+
+    private static final int RECYCLE_MINS = 60;
+
+    private final BiRecyclingRepository<Integer, String, Account> accounts;
 
     @Inject
-    public AccountDAOImpl(DatabaseSource dbSource) {
-        this.dbSource = dbSource;
+    private @ServiceDependency("RealmServices") DatabaseSource dbSource;
 
-        ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
-        service.scheduleAtFixedRate((Runnable) () -> {
-            ArrayList<AccountReference> copy = new ArrayList<>();
-            copy.addAll(hashByName.values());
-            for (AccountReference ref : copy) {
-                if (!ref.isLogged() && (System.currentTimeMillis() - ref.lastLogin) > 60 * 1000 * 60) {
-                    hashByName.remove(ref.name);
-                    hashByGuid.remove(ref.guid);
-                }
-            }
-            copy.clear();
-        }, 60 * 1000 * 60, 60 * 1000 * 60, TimeUnit.MILLISECONDS);
-    }
-
-    private final Map<Integer, AccountReference> hashByGuid = new ConcurrentHashMap<>();
-    private final Map<String, AccountReference> hashByName = new ConcurrentHashMap<>();
-    private final List<Account> loggedAccounts = new CopyOnWriteArrayList<>();
-    private final RealmLoader loader = new RealmLoader();
-
-    @Override
-    public RealmLoader getLoader() {
-        return loader;
+    public AccountDAOImpl() {
+        this.accounts = new BiRecyclingRepository<>((acc) -> acc.id, (acc) -> acc.username,
+                this::loadById, this::loadByUsername,
+                this::save, (val) -> val, String::toLowerCase,
+                RECYCLE_MINS, TimeUnit.MINUTES);
     }
 
     @Override
-    public Collection<Account> getAccounts() {
-        return loggedAccounts;
+    public RepositoryReference<Account> getAccount(int guid) {
+        return accounts.getReferenceByFirst(guid);
     }
 
     @Override
-    public void removeAccount(Account c) {
-        loggedAccounts.remove(c);
+    public RepositoryReference<Account> getAccount(String name) {
+        return accounts.getReferenceBySecond(name);
     }
 
-    @Override
-    public AccountReference getCompte(int guid) {
-        return hashByGuid.get(guid);
-    }
+
+
+    private static final String UPDATE_SUSPENSION_BY_ID = "UPDATE `account` SET suspended_time = ? WHERE id = ?;";
 
     @Override
-    public AccountReference getCompteByName(String name) {
-        return hashByName.get(name);
-    }
+    public void updateBlame(Account acc) {
+        try (ConnectionStatement<PreparedStatement> conn = dbSource.prepareStatement(UPDATE_SUSPENSION_BY_ID)){
+            PreparedStatement stmt = conn.getStatement();
+            stmt.setLong(1, acc.suspendedTime);
+            stmt.setInt(2, acc.id);
 
-    @Override
-    public void addAccount(Account compte) {
-        if (!loggedAccounts.contains(compte))
-            loggedAccounts.add(compte);
-    }
+            stmt.execute();
 
-    @Override
-    public synchronized AccountReference initReference(Account acc) {
-        AccountReference ref = hashByName.get(acc.Username.toLowerCase());
-        if (ref == null) {
-            ref = new AccountReference(acc);
-            hashByName.put(acc.Username.toLowerCase(), ref);
-            hashByGuid.put(acc.ID, ref);
+            logger.debug("Account [{}] {} suspension time saved", acc.id, acc.username);
+        } catch (Exception e) {
+            logger.error(e);
+            logger.warn(e.getMessage());
         }
-        return ref;
     }
 
     private final static String UPDATE_BY_ID = "UPDATE `account` SET last_login = ? , last_ip = ? WHERE id = ?;";
@@ -100,67 +76,139 @@ public class AccountDAOImpl extends AccountDAO {
         try (ConnectionStatement<PreparedStatement> conn = dbSource.prepareStatement(UPDATE_BY_ID)){
             PreparedStatement stmt = conn.getStatement();
             stmt.setTimestamp(1, acc.last_login);
-            stmt.setString(2, acc.LastIP);
-            stmt.setInt(3, acc.ID);
+            stmt.setString(2, acc.lastIP);
+            stmt.setInt(3, acc.id);
 
             stmt.execute();
+
+            logger.debug("Account [{}] {} saved", acc.id, acc.username);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e);
+            logger.warn(e.getMessage());
         }
+    }
+
+    @Override
+    public RepositoryReference<Account> getLoadedAccount(int guid) {
+        return accounts.getReferenceByFirst(guid);
     }
 
     private final static String QUERY_BY_USERNAME = "SELECT account.id,account.username,account.sha_pass_hash,account.password,account.nickname,account.rights,account.secret_question,account.secret_answer,account.last_ip,account.suspended_time,account.last_login, " +
             "GROUP_CONCAT(worlds_characters.server SEPARATOR ',') AS servers, " +
             "GROUP_CONCAT(worlds_characters.number SEPARATOR ',') AS players " +
-            "FROM ACCOUNT " +
+            "FROM account " +
             "LEFT JOIN worlds_characters on account.id = worlds_characters.owner " +
             "WHERE account.username = ?;";
 
-    @Override
-    public Account getByKey(String Username) throws Exception {
+    public Account loadByUsername(String username) {
         try (ConnectionStatement<PreparedStatement> conn = dbSource.prepareStatement(QUERY_BY_USERNAME)) {
 
             PreparedStatement stmt = conn.getStatement();
-            stmt.setString(1, Username);
+            stmt.setString(1, username);
+
             ResultSet RS = stmt.executeQuery();
 
-            if(!RS.first() || RS.getString("username") == null)
+            if(!RS.first())
                 return null;
 
-            AccountReference other = this.getCompte(RS.getInt("id"));
-            if ((other != null) && (other.isLogged())) {
-                other.get().Client.timeOut(); //was disco message
-                throw new NullPointerException();
-            } else {
-                return new Account() {
-                    {
-                        ID = RS.getInt("id");
-                        Username = RS.getString("username");
-                        SHA_HASH = RS.getString("sha_pass_hash");
-                        Password = RS.getString("password");
-                        NickName = RS.getString("nickname");
-                        Right = RS.getByte("rights");
-                        SecretQuestion = RS.getString("secret_question");
-                        SecretAnswer = RS.getString("secret_answer");
-                        LastIP = RS.getString("last_ip");;
-                        try {
-                            last_login = RS.getTimestamp("last_login");
-                        } catch (Exception e) {
-                            last_login = Timestamp.from(Instant.now());
-                        }
-                        if (RS.getString("servers") != null) {
-                            for (int i = 0; i < RS.getString("servers").split(",").length; i++) {
-                                Characters.put(Short.parseShort(RS.getString("servers").split(",")[i]), Byte.parseByte(RS.getString("players").split(",")[i]));
-                            }
-                        }
+            return new Account() {
+                {
+                    id = RS.getInt("id");
+                    username = RS.getString("username");
+                    SHA_HASH = RS.getString("sha_pass_hash");
+                    password = RS.getString("password");
+                    nickName = RS.getString("nickname");
+                    suspendedTime = RS.getLong("suspended_time");
+                    right = RS.getByte("rights");
+                    secretQuestion = RS.getString("secret_question");
+                    secretAnswer = RS.getString("secret_answer");
+                    lastIP = RS.getString("last_ip");;
+                    try {
+                        last_login = RS.getTimestamp("last_login");
+                    } catch (Exception e) {
+                        last_login = Timestamp.from(Instant.now());
                     }
-                };
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            //Main.Logs().writeInfo("Connexion a la DB Perdue, deconnexion du compte en connexion en attendant la reconnexion de la DB...");
-            throw new Exception();
+                    if (RS.getString("servers") != null) {
+                        String[] servers = RS.getString("servers").split(",");
+                        String[] players = RS.getString("players").split(",");
+
+                        for (int i = 0; i < RS.getString("servers").split(",").length; i++)
+                            characters.put(Short.parseShort(servers[i]), Byte.parseByte(players[i]));
+                    }
+                }
+            };
+        }catch (Exception e) {
+            logger.error(e);
+            logger.warn(e.getMessage());
         }
+        return null;
     }
 
+    @Override
+    public Account getByKey(String Username) throws Exception {
+        return accounts.getBySecond(Username);
+    }
+
+    private final static String QUERY_BY_ID = "SELECT account.id,account.username,account.sha_pass_hash,account.password,account.nickname,account.rights,account.secret_question,account.secret_answer,account.last_ip,account.suspended_time,account.last_login, " +
+            "GROUP_CONCAT(worlds_characters.server SEPARATOR ',') AS servers, " +
+            "GROUP_CONCAT(worlds_characters.number SEPARATOR ',') AS players " +
+            "FROM account " +
+            "LEFT JOIN worlds_characters on account.id = worlds_characters.owner " +
+            "WHERE account.id = ?;";
+
+    private Account loadById(int id) {
+        try (ConnectionStatement<PreparedStatement> conn = dbSource.prepareStatement(QUERY_BY_ID)) {
+
+            PreparedStatement stmt = conn.getStatement();
+            stmt.setInt(1, id);
+            ResultSet RS = stmt.executeQuery();
+
+            if (!RS.first())
+                return null;
+
+            return new Account() {
+                {
+                    id = RS.getInt("id");
+                    username = RS.getString("username");
+                    SHA_HASH = RS.getString("sha_pass_hash");
+                    password = RS.getString("password");
+                    nickName = RS.getString("nickname");
+                    right = RS.getByte("rights");
+                    secretQuestion = RS.getString("secret_question");
+                    secretAnswer = RS.getString("secret_answer");
+                    lastIP = RS.getString("last_ip");
+                    ;
+                    try {
+                        last_login = RS.getTimestamp("last_login");
+                    } catch (Exception e) {
+                        last_login = Timestamp.from(Instant.now());
+                    }
+                    if (RS.getString("servers") != null) {
+                        String[] servers = RS.getString("servers").split(",");
+                        String[] players = RS.getString("players").split(",");
+
+                        for (int i = 0; i < RS.getString("servers").split(",").length; i++)
+                            characters.put(Short.parseShort(servers[i]), Byte.parseByte(players[i]));
+                    }
+                }
+            };
+        }catch (Exception e) {
+            logger.error(e);
+            logger.warn(e.getMessage());
+        }
+        return null;
+    }
+
+    @Override
+    public void start() {
+    }
+
+    @Override
+    public void stop() {
+        accounts.dispose();
+        accounts.values().stream().forEach((account) -> account.sync(() -> {
+            if(account.loaded())
+                this.save(account.get());
+        }));
+    }
 }

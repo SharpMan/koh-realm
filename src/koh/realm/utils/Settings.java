@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.google.inject.Singleton;
-import koh.realm.Logs;
 
 /**
  *
@@ -56,7 +55,7 @@ public class Settings {
     private void readSettings() {
         Map<String, String> currentGroup = null;
         try {
-            BufferedReader config = new BufferedReader(new FileReader(path));
+            BufferedReader config = new BufferedReader(new FileReader(System.getProperty("user.dir")+path));
             String line = "";
             while ((line = config.readLine()) != null) {
                 if (!line.isEmpty() && !line.startsWith(";")) {
@@ -81,7 +80,7 @@ public class Settings {
         try {
             File file = new File(path);
             BufferedWriter output = new BufferedWriter(new FileWriter(file));
-            
+
             for (Entry<String, Map<String,String>> group : elements.entrySet())
             {
                 output.write("[" + group.getKey() + "]");

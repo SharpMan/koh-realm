@@ -13,5 +13,6 @@
     <orderEntry type="module" module-name="koh-libs" />
     <orderEntry type="module" module-name="koh-protocol" />
     <orderEntry type="library" name="koh-realm-libs" level="project" />
+    <orderEntry type="library" name="koh-libs-libs" level="project" />
   </component>
 </module>
