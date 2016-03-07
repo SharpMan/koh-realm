@@ -45,7 +45,7 @@ public class RealmClient extends MinaClient {
         } finally {
             eventsEmitter.fire(toFire);
             
-            this.log((logger) -> logger.info("Context changed to " + context.getClass().getSimpleName()));
+            this.log((logger) -> logger.info("Context changed to {} " , context.getClass().getSimpleName()));
         }
     }
 

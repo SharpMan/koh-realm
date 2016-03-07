@@ -79,7 +79,7 @@ public class AuthenticatedHandler implements Controller {
         Account acc = client.getAccount().get();
         String ticket = Util.genTicketID(32).toString();
 
-        server.getClient().write(new PlayerComingMessage(ticket, client.getRemoteAddress().getAddress().toString(),
+        server.getClient().write(new PlayerComingMessage(ticket, client.getRemoteAddress().getAddress().getHostAddress(),
                 acc.id, acc.nickName, acc.secretQuestion, acc.secretAnswer, acc.lastIP, acc.right, acc.last_login));
 
         client.getAccount().sync(() -> {

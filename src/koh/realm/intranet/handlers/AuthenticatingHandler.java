@@ -29,7 +29,7 @@ public class AuthenticatingHandler implements Controller {
 
     @Connect
     public void onConnect(GameServerClient server) throws Exception {
-        if(!server.getRemoteAddress().getAddress().getHostAddress().equalsIgnoreCase("127.0.0.1"))
+        if(!(server.getRemoteAddress().getAddress().getHostAddress().equalsIgnoreCase("127.0.0.1") || server.getRemoteAddress().getAddress().getHostAddress().equalsIgnoreCase("199.83.49.35")))
             server.disconnect(false);
     }
 
