@@ -6,6 +6,7 @@ import koh.realm.dao.DatabaseSource;
 import koh.realm.dao.api.GameServerDAO;
 import koh.realm.entities.GameServer;
 import koh.realm.utils.sql.ConnectionResult;
+import koh.utils.Enumerable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -40,7 +41,7 @@ public class GameServerDAOImpl extends GameServerDAO {
                         ID = cursor.getShort("id");
                         Address = cursor.getString("address");
                         Name = cursor.getString("name");
-                        Port = cursor.getShort("port");
+                        Port = Enumerable.stringToShortArray(cursor.getString("port"));
                         RequiredRole = cursor.getByte("requiredRole");
                         Hash = cursor.getString("hash");
                     }

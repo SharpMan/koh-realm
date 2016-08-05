@@ -8,12 +8,15 @@ import koh.protocol.client.MessageTransaction;
 import koh.realm.entities.Account;
 import koh.realm.internet.events.ClientContextChangedEvent;
 import koh.repositories.RepositoryReference;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.ThreadContext;
 import org.apache.mina.core.future.CloseFuture;
 import org.apache.mina.core.session.IoSession;
 
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 public class RealmClient extends MinaClient {
@@ -21,6 +24,12 @@ public class RealmClient extends MinaClient {
     private static final Logger logger = LogManager.getLogger("RealmServer");
 
     private final EventExecutor eventsEmitter;
+
+    @Getter @Setter
+    private volatile boolean hasBeenAuthentified = false;
+
+    @Getter
+    private final Object mutex = new Object();
 
     public RealmClient(IoSession session, EventExecutor eventsEmitter) {
         super(session, RealmContexts.AUTHENTICATING);

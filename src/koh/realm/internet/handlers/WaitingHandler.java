@@ -12,6 +12,7 @@ import koh.patterns.handler.context.RequireContexts;
 import koh.protocol.client.*;
 import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.protocol.client.enums.IdentificationFailureReason;
+import koh.protocol.client.enums.ServerStatusEnum;
 import koh.protocol.messages.connection.*;
 import koh.realm.dao.api.AccountDAO;
 import koh.realm.dao.api.BannedAddressDAO;
@@ -95,35 +96,35 @@ public class WaitingHandler implements Controller {
     }
 
     private void treatWaiting(RealmClient client) {
-        if(client.disconnecting() || client.getAuthenticationToken() == null)
+        if(client.disconnecting() || client.getAuthenticationToken() == null){
             return;
+        }
 
-        AuthenticationToken token = client.getAuthenticationToken();
+        final AuthenticationToken token = client.getAuthenticationToken();
         client.setAuthenticationToken(null);
 
-        /*if(serverDAO.getGameServers().size() == 0 || countOnlineServers() == 0) {
+        if(serverDAO.getGameServers().filter(gs -> gs.getStatus() == ServerStatusEnum.ONLINE).count() == 0) {
             client.disconnect(maintenanceMessage);
             return;
-        }*/
+        }
 
-        String login;
-        String password;
+        final String login;
+        final String password;
         {
             IoBuffer credentialsBuffer = IoBuffer.wrap(token.identificationMessage.getCredentials());
             login = BufUtils.readUTF(credentialsBuffer);
             password = BufUtils.readUTF(credentialsBuffer);
         }
 
-        RepositoryReference<Account> loadedAccount = accountDAO.getAccount(login);
+        final RepositoryReference<Account> loadedAccount = accountDAO.getAccount(login);
 
-        if(loadedAccount == null) {
+        if(loadedAccount == null || loadedAccount.get() == null || loadedAccount.get().username == null) {
             client.disconnect(new MessageQueue(endQueueMessage, wrongCredentialsMessage));
             return;
         }
 
         try {
             loadedAccount.sync(() -> {
-
                 if(!loadedAccount.get().isValidPass(password)) {
                     throw new LambdaException(() -> client.disconnect(
                             new MessageQueue(endQueueMessage, wrongCredentialsMessage)

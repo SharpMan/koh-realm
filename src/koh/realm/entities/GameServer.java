@@ -7,6 +7,9 @@ import koh.protocol.client.types.GameServerInformations;
 import koh.realm.intranet.GameServerClient;
 import koh.realm.intranet.events.ServerStatusChangedEvent;
 
+import java.security.SecureRandom;
+import java.util.Random;
+
 /**
  *
  * @author Neo-Craft
@@ -15,7 +18,7 @@ public class GameServer {
 
     public short ID;
     public String Name, Address, Hash;
-    public short Port;
+    public short[] Port;
     public byte RequiredRole;
 
     private volatile ServerStatusEnum status = ServerStatusEnum.OFFLINE;
@@ -32,6 +35,13 @@ public class GameServer {
     public ServerStatusEnum getStatus() {
         return status;
     }
+
+    private final SecureRandom rand = new SecureRandom();
+
+    public short getPort(){
+        return Port[rand.nextInt(Port.length)];
+    }
+
 
     public void setStatus(ServerStatusEnum status) {
         if(status != this.status)

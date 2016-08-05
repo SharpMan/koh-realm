@@ -52,44 +52,54 @@ public class AuthenticatedHandler implements Controller {
 
     @Receive
     public void onSelect(RealmClient client, ServerSelectionMessage message) throws Exception {
-        GameServer server;
-        try {
-            server = serverDAO.getByKey(message.getServerId());
-        }catch(Exception ignored) {
-            client.write(new SelectedServerRefusedMessage(
-                    message.getServerId(), ServerConnectionError.NO_REASON, ServerStatusEnum.STATUS_UNKNOWN));
-            return;
-        }
-        if (server == null) {
-            client.write(new SelectedServerRefusedMessage(
-                    message.getServerId(), ServerConnectionError.NO_REASON, ServerStatusEnum.STATUS_UNKNOWN));
-            return;
-        }
-        if (server.getStatus() != ServerStatusEnum.ONLINE) {
-            client.write(new SelectedServerRefusedMessage(message.getServerId(), ServerConnectionError.DUE_TO_STATUS,
-                    server.getStatus()));
-            return;
-        }
-        if (server.RequiredRole > client.getAccount().get().right) {
-            client.write(new SelectedServerRefusedMessage(message.getServerId(), ServerConnectionError.ACCOUNT_RESTRICTED,
-                    server.getStatus()));
-            return;
-        }
+        synchronized (client.getMutex()) {
+            if(client.isHasBeenAuthentified()){
+                return;
+            }
+            final GameServer server;
+            try {
+                server = serverDAO.getByKey(message.getServerId());
+            } catch (Exception ignored) {
+                client.write(new SelectedServerRefusedMessage(
+                        message.getServerId(), ServerConnectionError.NO_REASON, ServerStatusEnum.STATUS_UNKNOWN));
+                return;
+            }
+            if (server == null) {
+                client.write(new SelectedServerRefusedMessage(
+                        message.getServerId(), ServerConnectionError.NO_REASON, ServerStatusEnum.STATUS_UNKNOWN));
+                return;
+            }
+            if (server.getStatus() != ServerStatusEnum.ONLINE) {
+                client.write(new SelectedServerRefusedMessage(message.getServerId(), ServerConnectionError.DUE_TO_STATUS,
+                        server.getStatus()));
+                return;
+            }
+            if (server.RequiredRole > client.getAccount().get().right) {
+                client.write(new SelectedServerRefusedMessage(message.getServerId(), ServerConnectionError.ACCOUNT_RESTRICTED,
+                        server.getStatus()));
+                return;
+            }
 
-        Account acc = client.getAccount().get();
-        String ticket = Util.genTicketID(32).toString();
+            client.setHasBeenAuthentified(true);
 
-        server.getClient().write(new PlayerComingMessage(ticket, client.getRemoteAddress().getAddress().getHostAddress(),
-                acc.id, acc.nickName, acc.secretQuestion, acc.secretAnswer, acc.lastIP, acc.right, acc.last_login));
+            final Account acc = client.getAccount().get();
+            final String ticket = Util.genTicketID(32).toString();
 
-        client.getAccount().sync(() -> {
+            server.getClient().write(new PlayerComingMessage(ticket, client.getRemoteAddress().getAddress().getHostAddress(),
+                    acc.id, acc.nickName, acc.secretQuestion, acc.secretAnswer, acc.lastIP, acc.right, acc.last_login));
+
+            /*client.getAccount().sync(() -> {
+                acc.lastIP = client.getRemoteAddress().getAddress().getHostAddress();
+                acc.last_login = Timestamp.from(Instant.now());
+                accountDAO.save(acc);
+            });*/
             acc.lastIP = client.getRemoteAddress().getAddress().getHostAddress();
             acc.last_login = Timestamp.from(Instant.now());
             accountDAO.save(acc);
-        });
-        //TODO : Bool createNewCharacter Size
+            //TODO : Bool createNewCharacter Size
 
-        client.disconnect(new SelectedServerDataMessage(server.ID, server.Address, server.Port, true, ticket));
+            client.disconnect(new SelectedServerDataMessage(server.ID, server.Address, server.getPort(), true, ticket));
+        }
     }
 
     @Disconnect

@@ -40,6 +40,15 @@ public class AuthenticatedHandler implements Controller {
     @Receive
     public void onPlayerCreated(GameServerClient server, PlayerCreatedMessage message) throws Exception {
         characterDAO.insertOrUpdate(message.accountId, server.getEntity().ID, (short)message.currentCount);
+        RepositoryReference<Account> target = accountDAO.getAccount(message.accountId);
+        if(target != null && target.get() != null) {
+            target.get().characters.put(server.getEntity().ID, (byte) message.currentCount);
+        }
+    }
+
+    @Receive
+    public void onPong(GameServerClient server, PingMessage message){
+        server.write(message);
     }
 
     @Receive
@@ -75,7 +84,7 @@ public class AuthenticatedHandler implements Controller {
 
     @Receive
     public void onPlayerSuspended(GameServerClient server, PlayerSuspendedMessage message) throws Exception {
-        RepositoryReference<Account> target = accountDAO.getAccount(message.accountId);
+        final RepositoryReference<Account> target = accountDAO.getAccount(message.accountId);
         if(target == null) {
             log.error("Fail to found the suspended account {}", message.accountId);
         }

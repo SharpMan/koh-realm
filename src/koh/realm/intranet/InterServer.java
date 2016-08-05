@@ -23,6 +23,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
+import org.apache.mina.core.session.IdleStatus;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.core.write.WriteToClosedSessionException;
 
@@ -64,6 +65,7 @@ public class InterServer implements Service, MinaListener<GameServerClient> {
                 messagesExecutor, this, InterMessage.class);
 
         minaServer.configure(decoder, encoder, 256, true);
+        minaServer.getSessionConfig().setIdleTime(IdleStatus.BOTH_IDLE, 15);
 
         try {
             minaServer.bind(settings.getStringElement("Inter.Host"), settings.getIntElement("Inter.Port"));
@@ -85,6 +87,7 @@ public class InterServer implements Service, MinaListener<GameServerClient> {
     public void onException(GameServerClient client, Throwable exception) {
         if(exception instanceof WriteToClosedSessionException)
             return; //ignore
+        exception.printStackTrace();
 
         logger.error(EXC_MARKER, exception.getMessage(), exception);
     }
