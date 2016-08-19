@@ -20,6 +20,8 @@ public class Main {
 
     private static final Logger logger = LogManager.getLogger(Main.class);
 
+    public static final RealmServer REALM = new RealmServer();
+
     public static PrintStream createLoggingProxy(final PrintStream realPrintStream) {
         return new PrintStream(realPrintStream) {
             public void print(final String string) {
@@ -37,7 +39,7 @@ public class Main {
                     new DatabaseSource(),
                     new MemoryService(),
 
-                    new RealmServer(),
+                    REALM,
                     new InterServer(),
 
                     new Loggers()

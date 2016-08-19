@@ -9,10 +9,12 @@ import koh.patterns.event.api.Listen;
 import koh.patterns.handler.context.Ctx;
 import koh.patterns.handler.context.RequireContexts;
 import koh.protocol.messages.connection.ServerStatusUpdateMessage;
+import koh.realm.Main;
 import koh.realm.dao.api.AccountDAO;
 import koh.realm.dao.api.BannedAddressDAO;
 import koh.realm.dao.api.CharacterDAO;
 import koh.realm.entities.Account;
+import koh.realm.internet.RealmClient;
 import koh.realm.intranet.GameServerClient;
 import koh.realm.intranet.InterServerContexts;
 import koh.realm.intranet.events.ServerStatusChangedEvent;
@@ -40,7 +42,7 @@ public class AuthenticatedHandler implements Controller {
     @Receive
     public void onPlayerCreated(GameServerClient server, PlayerCreatedMessage message) throws Exception {
         characterDAO.insertOrUpdate(message.accountId, server.getEntity().ID, (short)message.currentCount);
-        RepositoryReference<Account> target = accountDAO.getAccount(message.accountId);
+        final RepositoryReference<Account> target = accountDAO.getAccount(message.accountId);
         if(target != null && target.get() != null) {
             target.get().characters.put(server.getEntity().ID, (byte) message.currentCount);
         }
@@ -96,7 +98,7 @@ public class AuthenticatedHandler implements Controller {
 
     @Listen
     public void onStatusChanged(ServerStatusChangedEvent event) {
-        realmServer.getMina().broadcast(new ServerStatusUpdateMessage(event.entity.toInformations()),
+        Main.REALM.getMina().broadcast(new ServerStatusUpdateMessage(event.entity.toInformations()),
                 (client) -> client.getHandlerContext() == RealmContexts.AUTHENTICATED);
     }
 

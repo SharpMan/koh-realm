@@ -65,6 +65,10 @@ public class WaitingHandler implements Controller {
                 encoder.encodeMessage(new ServersListMessage(serverDAO.getGameServers()
                         .map(GameServer::toInformations).collect(Collectors.toList())),  IoBuffer.allocate(128))
         );
+        this.adminServersListMessage = new PregenMessage(
+                encoder.encodeMessage(new ServersListMessage(serverDAO.getGameServers()
+                        .map(GameServer::toInformations).collect(Collectors.toList())),  IoBuffer.allocate(128))
+        );
     }
 
     private @Inject EventExecutor eventsEmitter;
@@ -103,10 +107,10 @@ public class WaitingHandler implements Controller {
         final AuthenticationToken token = client.getAuthenticationToken();
         client.setAuthenticationToken(null);
 
-        if(serverDAO.getGameServers().filter(gs -> gs.getStatus() == ServerStatusEnum.ONLINE).count() == 0) {
+/*        if(serverDAO.getGameServers().filter(gs -> gs.getStatus() == ServerStatusEnum.ONLINE).count() == 0) {
             client.disconnect(maintenanceMessage);
             return;
-        }
+        }*/
 
         final String login;
         final String password;
@@ -177,7 +181,7 @@ public class WaitingHandler implements Controller {
             return;
         }
 
-        Account acc = loadedAccount.get();
+        final Account acc = loadedAccount.get();
 
         client.setHandlerContext(RealmContexts.AUTHENTICATED);
 
@@ -188,7 +192,8 @@ public class WaitingHandler implements Controller {
                     /*Community*/ 0, acc.right > 0, acc.secretQuestion,
                     Instant.now().plus(365, ChronoUnit.DAYS).toEpochMilli() , false));
 
-            trans.write(serversListMessage);
+
+            trans.write(acc.right > 0 ? adminServersListMessage : serversListMessage);
         });
     }
 
@@ -196,8 +201,14 @@ public class WaitingHandler implements Controller {
     private RealmServer realmServer;
 
     private volatile PregenMessage serversListMessage;
+    private volatile PregenMessage adminServersListMessage;
     @Listen public void onStatusChanged(ServerStatusChangedEvent event) {
         this.serversListMessage = new PregenMessage(
+                encoder.encodeMessage(new ServersListMessage(serverDAO.getGameServers()
+                        .filter(g -> g.RequiredRole  == 0)
+                        .map(GameServer::toInformations).collect(Collectors.toList())),  IoBuffer.allocate(128))
+        );
+        this.adminServersListMessage = new PregenMessage(
                 encoder.encodeMessage(new ServersListMessage(serverDAO.getGameServers()
                         .map(GameServer::toInformations).collect(Collectors.toList())),  IoBuffer.allocate(128))
         );
