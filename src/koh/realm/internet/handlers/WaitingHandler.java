@@ -3,6 +3,8 @@ package koh.realm.internet.handlers;
 import com.google.inject.Inject;
 import koh.concurrency.LambdaException;
 import koh.concurrency.WaitingQueue;
+import koh.inter.InterMessage;
+import koh.inter.messages.ExpulseAccountMessage;
 import koh.mina.api.annotations.Disconnect;
 import koh.patterns.Controller;
 import koh.patterns.event.EventExecutor;
@@ -14,6 +16,7 @@ import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.protocol.client.enums.IdentificationFailureReason;
 import koh.protocol.client.enums.ServerStatusEnum;
 import koh.protocol.messages.connection.*;
+import koh.realm.Main;
 import koh.realm.dao.api.AccountDAO;
 import koh.realm.dao.api.BannedAddressDAO;
 import koh.realm.dao.api.GameServerDAO;
@@ -25,12 +28,14 @@ import koh.realm.internet.RealmContexts;
 import koh.realm.internet.RealmServer;
 import koh.realm.internet.events.ClientContextChangedEvent;
 import koh.realm.internet.events.ProgressChangedEvent;
+import koh.realm.intranet.InterServer;
 import koh.realm.intranet.events.ServerStatusChangedEvent;
 import koh.repositories.RepositoryReference;
 import org.apache.mina.core.buffer.IoBuffer;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @RequireContexts(@Ctx(RealmContexts.InWaitingQueue.class))
@@ -69,11 +74,22 @@ public class WaitingHandler implements Controller {
                 encoder.encodeMessage(new ServersListMessage(serverDAO.getGameServers()
                         .map(GameServer::toInformations).collect(Collectors.toList())),  IoBuffer.allocate(128))
         );
+        this.pvpListMessage = new PregenMessage(
+                encoder.encodeMessage(new ServersListMessage(serverDAO.getGameServers()
+                        .filter(g -> g.ID == 1)
+                        .map(GameServer::toInformations).collect(Collectors.toList())),  IoBuffer.allocate(128))
+        );
+        this.pvmListMessage = new PregenMessage(
+                encoder.encodeMessage(new ServersListMessage(serverDAO.getGameServers()
+                        .filter(g -> g.ID == 3)
+                        .map(GameServer::toInformations).collect(Collectors.toList())),  IoBuffer.allocate(128))
+        );
     }
 
     private @Inject EventExecutor eventsEmitter;
     private @Inject AccountDAO accountDAO;
     private @Inject BannedAddressDAO addressDAO;
+    //private @Inject InterServer interServer;
 
     @Listen
     public void onContextChanged(ClientContextChangedEvent event) {
@@ -136,7 +152,7 @@ public class WaitingHandler implements Controller {
                 }
 
                 if(loadedAccount.get().client != null) {
-                    if(addressDAO.isBanned(client.getRemoteAddress().getAddress().toString())){
+                    if(addressDAO.isBanned(client.getRemoteAddress().getAddress().getHostAddress())){
                         throw new LambdaException(() -> {
                             client.disconnect(new IdentificationFailedBannedMessage(IdentificationFailureReason.BANNED,loadedAccount.get().suspendedTime));
                             loadedAccount.get().getClient().disconnect(
@@ -158,7 +174,7 @@ public class WaitingHandler implements Controller {
                     });
                 }
 
-                if(addressDAO.isBanned(client.getRemoteAddress().getAddress().toString())){
+                if(addressDAO.isBanned(client.getRemoteAddress().getAddress().getHostAddress())){
                     throw new LambdaException(() -> client.disconnect(
                             new MessageQueue(endQueueMessage, new IdentificationFailedBannedMessage(IdentificationFailureReason.BANNED, addressDAO.get(client.getRemoteAddress().getAddress().toString())))
                     ));
@@ -185,6 +201,26 @@ public class WaitingHandler implements Controller {
 
         client.setHandlerContext(RealmContexts.AUTHENTICATED);
 
+        /*try {
+            final InterMessage msg = new ExpulseAccountMessage(loadedAccount.get().id);
+            serverDAO.getGameServers()
+                    .filter(se -> se.getClient() != null)
+                    .forEach(server -> {
+                        try {
+                            server.getClient().write(msg).await(10, TimeUnit.SECONDS);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    });
+
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }*/
+       // System.out.println("job done"+(this.interServer == null) + " "+(this.interServer.getMina() == null));
+
+
         client.transact((trans) -> {
             trans.write(endQueueMessage);
 
@@ -192,16 +228,26 @@ public class WaitingHandler implements Controller {
                     /*Community*/ 0, acc.right > 0, acc.secretQuestion,
                     Instant.now().plus(365, ChronoUnit.DAYS).toEpochMilli() , false));
 
-
-            trans.write(acc.right > 0 ? adminServersListMessage : serversListMessage);
+            if(acc.reg_server == 1 && acc.getPlayers(PVP) == 0){
+                trans.write(acc.right > 0 ? adminServersListMessage : pvpListMessage);
+            }
+            else if(acc.reg_server == 3 && acc.getPlayers(PVM) == 0){
+                trans.write(acc.right > 0 ? adminServersListMessage : pvmListMessage);
+            }
+            else
+                trans.write(acc.right > 0 ? adminServersListMessage : serversListMessage);
         });
+        //Main.INTER_SERVER.getMina().broadcast(new ExpulseAccountMessage(loadedAccount.get().id));
+
     }
+    private static final short PVP = 1,PVM = 3;
 
     @Inject
     private RealmServer realmServer;
 
-    private volatile PregenMessage serversListMessage;
+    private volatile PregenMessage serversListMessage, pvpListMessage,pvmListMessage;
     private volatile PregenMessage adminServersListMessage;
+
     @Listen public void onStatusChanged(ServerStatusChangedEvent event) {
         this.serversListMessage = new PregenMessage(
                 encoder.encodeMessage(new ServersListMessage(serverDAO.getGameServers()
@@ -210,6 +256,16 @@ public class WaitingHandler implements Controller {
         );
         this.adminServersListMessage = new PregenMessage(
                 encoder.encodeMessage(new ServersListMessage(serverDAO.getGameServers()
+                        .map(GameServer::toInformations).collect(Collectors.toList())),  IoBuffer.allocate(128))
+        );
+        this.pvpListMessage = new PregenMessage(
+                encoder.encodeMessage(new ServersListMessage(serverDAO.getGameServers()
+                        .filter(g -> g.ID == 1)
+                        .map(GameServer::toInformations).collect(Collectors.toList())),  IoBuffer.allocate(128))
+        );
+        this.pvmListMessage = new PregenMessage(
+                encoder.encodeMessage(new ServersListMessage(serverDAO.getGameServers()
+                        .filter(g -> g.ID == 3)
                         .map(GameServer::toInformations).collect(Collectors.toList())),  IoBuffer.allocate(128))
         );
     }

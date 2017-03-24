@@ -18,9 +18,6 @@ import koh.protocol.client.Message;
 import koh.protocol.client.codec.Dofus2ProtocolDecoder;
 import koh.protocol.client.codec.Dofus2ProtocolEncoder;
 import koh.realm.dao.DatabaseSource;
-import koh.realm.dao.api.AccountDAO;
-import koh.realm.dao.api.CharacterDAO;
-import koh.realm.dao.api.GameServerDAO;
 import koh.realm.intranet.InterServer;
 import koh.realm.utils.Settings;
 import org.apache.logging.log4j.*;
@@ -28,7 +25,6 @@ import org.apache.mina.core.session.IoSession;
 import org.apache.mina.core.write.WriteToClosedSessionException;
 
 import java.io.IOException;
-import java.util.function.Consumer;
 
 @DependsOn({DatabaseSource.class, InterServer.class})
 public class RealmServer implements Service, MinaListener<RealmClient> {

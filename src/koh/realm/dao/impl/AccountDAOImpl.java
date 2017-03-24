@@ -93,7 +93,7 @@ public class AccountDAOImpl extends AccountDAO {
         return accounts.getReferenceByFirst(guid);
     }
 
-    private final static String QUERY_BY_USERNAME = "SELECT account.id,account.username,account.sha_pass_hash,account.password,account.nickname,account.rights,account.secret_question,account.secret_answer,account.last_ip,account.suspended_time,account.last_login, " +
+    private final static String QUERY_BY_USERNAME = "SELECT account.id,account.reg_server,account.username,account.sha_pass_hash,account.password,account.nickname,account.rights,account.secret_question,account.secret_answer,account.last_ip,account.suspended_time,account.last_login, " +
             "GROUP_CONCAT(worlds_characters.server SEPARATOR ',') AS servers, " +
             "GROUP_CONCAT(worlds_characters.number SEPARATOR ',') AS players " +
             "FROM account " +
@@ -120,6 +120,7 @@ public class AccountDAOImpl extends AccountDAO {
                     nickName = RS.getString("nickname");
                     suspendedTime = RS.getLong("suspended_time");
                     right = RS.getByte("rights");
+                    reg_server = RS.getByte("reg_server");
                     secretQuestion = RS.getString("secret_question");
                     secretAnswer = RS.getString("secret_answer");
                     lastIP = RS.getString("last_ip");;
@@ -149,7 +150,7 @@ public class AccountDAOImpl extends AccountDAO {
         return accounts.getBySecond(Username);
     }
 
-    private final static String QUERY_BY_ID = "SELECT account.id,account.username,account.sha_pass_hash,account.password,account.nickname,account.rights,account.secret_question,account.secret_answer,account.last_ip,account.suspended_time,account.last_login, " +
+    private final static String QUERY_BY_ID = "SELECT account.id,account.reg_server,account.username,account.sha_pass_hash,account.password,account.nickname,account.rights,account.secret_question,account.secret_answer,account.last_ip,account.suspended_time,account.last_login, " +
             "GROUP_CONCAT(worlds_characters.server SEPARATOR ',') AS servers, " +
             "GROUP_CONCAT(worlds_characters.number SEPARATOR ',') AS players " +
             "FROM account " +
@@ -174,6 +175,7 @@ public class AccountDAOImpl extends AccountDAO {
                     password = RS.getString("password");
                     nickName = RS.getString("nickname");
                     right = RS.getByte("rights");
+                    reg_server = RS.getByte("reg_server");
                     secretQuestion = RS.getString("secret_question");
                     secretAnswer = RS.getString("secret_answer");
                     lastIP = RS.getString("last_ip");

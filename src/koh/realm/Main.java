@@ -31,6 +31,8 @@ public class Main {
         };
     }
 
+    public static InterServer INTER_SERVER;
+
     public static void main(String[] args) {
         try {
             System.setErr(createLoggingProxy(System.err));
@@ -40,7 +42,7 @@ public class Main {
                     new MemoryService(),
 
                     REALM,
-                    new InterServer(),
+                    INTER_SERVER = new InterServer(),
 
                     new Loggers()
             );

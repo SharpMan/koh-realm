@@ -20,7 +20,7 @@ public class Account implements InUseCheckable {
     public String username;
     public String SHA_HASH, password;
     public String nickName;
-    public byte right;
+    public byte right, reg_server;
     public String secretQuestion, secretAnswer, lastIP;
     public Timestamp last_login;
     public long suspendedTime;
